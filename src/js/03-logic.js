@@ -21,7 +21,7 @@ const sameStage = (a, b) => (a.progId || b.progId ? a.progId === b.progId : norm
 // Entry detail: reps, optional weight (only when "weighted" is ticked) and an optional note that never counts for streaks.
 const wkey = e => (e.weighted ? String(e.weight || '').trim().replace(',', '.') : '');
 const sameExact = (a, b) => sameStage(a, b) && norm(a.reps) === norm(b.reps) && wkey(a) === wkey(b);
-const extraText = e => [e.reps ? (e.rounds ? `${e.rounds}×${e.reps}` : String(e.reps)) : '', e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
+const extraText = (e, short) => [e.reps ? (short || !e.rounds ? t('reps.n', { n: e.reps }) : `${e.rounds}×${e.reps}`) : '', e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
 
 // All set entries of a trainee for one exercise, newest session first.
 function history(tid, key) {

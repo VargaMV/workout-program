@@ -73,7 +73,7 @@ function itemGroupsHtml(s, it, people) {
     return { t: tr, e, streak: e && isSet(e) ? streakAt(h, h.findIndex(x => x.e === e)) : null };
   });
   const { groups, none } = groupByStage(list, key);
-  return groups.map(gr => `<div class="bgroup"><div class="bg-l">${esc(gr.label)} <span class="tag">${gr.items.length}</span></div><div class="bg-n">${gr.items.map(personHtml).join('')}</div></div>`).join('') +
+  return groups.map(gr => `<div class="bgroup"><div class="bg-l">${esc(gr.label)} <span class="tag">${gr.items.length}</span></div><div class="bg-n">${gr.items.map(x => personHtml(x, true)).join('')}</div></div>`).join('') +
     (none.length ? `<div class="bgroup none"><div class="bg-l">${t('nodata')}</div><div class="bg-n">${none.map(x => `<span>${esc(x.t.name)}</span>`).join('')}</div></div>` : '');
 }
 

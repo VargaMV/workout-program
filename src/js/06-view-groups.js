@@ -1,9 +1,9 @@
 // Home (groups), group page (matrix / sessions / template), exercise summary.
+// "5/2" = 5th session on this progression, 2nd in a row with the same reps and weight.
+const streakLabel = sk => `${sk.n}/${sk.exact}`;
 function streakChips(sk) {
-  if (!sk || !sk.n) return '';
-  const hot = sk.n >= db.settings.threshold;
-  return `<span class="badge ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${sk.n}</span>` +
-    (sk.exact < sk.n ? `<span class="badge ghost" title="${esc(t('exact.tip'))}">${t('exact', { n: sk.exact })}</span>` : '');
+  if (!sk || sk.n < 2) return '';
+  return `<span class="badge ${sk.n >= db.settings.threshold ? 'hot' : ''}" title="${esc(t('streak.tip'))}">${streakLabel(sk)}</span>`;
 }
 
 function backupBanner() {
@@ -51,8 +51,8 @@ function cellHtml(tid, key) {
   const { e, s, streak } = L;
   const pl = planned(tid, key);
   const hot = streak.n >= db.settings.threshold;
-  const info = [esc(extraText(e)), fmtDate(s.date), streak.n > 1 && streak.exact < streak.n ? t('exact', { n: streak.exact }) : ''].filter(Boolean).join(' · ');
-  return `<td class="${hot ? 'hot' : ''}">${streak.n > 1 ? `<span class="badge corner ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${streak.n}</span>` : ''}<div class="st ${streak.n > 1 ? 'pad' : ''}">${esc(entryLabel(e))}</div>
+  const info = [esc(extraText(e)), fmtDate(s.date)].filter(Boolean).join(' · ');
+  return `<td class="${hot ? 'hot' : ''}">${streak.n > 1 ? `<span class="badge corner ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">${streakLabel(streak)}</span>` : ''}<div class="st ${streak.n > 1 ? 'pad' : ''}">${esc(entryLabel(e))}</div>
     <small>${info}</small>
     ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${extraText(pl) ? ' · ' + esc(extraText(pl)) : ''}</div>` : ''}</td>`;
 }
@@ -114,6 +114,8 @@ V.exsum = ([gid, key]) => {
   return { html: header(exName(key), { back: `/group/${g.id}/matrix`, sub: g.name, actions: edit }) + `<div class="page"><div class="brief-item">${body || `<p class="muted">${t('nodata')}</p>`}</div></div>` };
 };
 
-function personHtml(it) {
-  return `<span class="pn"><a href="#/trainee/${it.t.id}">${esc(it.t.name)}</a>${streakChips(it.streak)}${it.e && extraText(it.e) ? `<small>${esc(extraText(it.e))}</small>` : ''}${it.e && it.e.note ? `<small class="note">“${esc(it.e.note)}”</small>` : ''}</span>`;
+// short: the block's rounds are already announced, so only the reps are shown ("5db").
+function personHtml(it, short) {
+  const detail = it.e ? extraText(it.e, short) : '';
+  return `<span class="pn"><a href="#/trainee/${it.t.id}">${esc(it.t.name)}</a>${streakChips(it.streak)}${detail ? `<small>${esc(detail)}</small>` : ''}${it.e && it.e.note ? `<small class="note">“${esc(it.e.note)}”</small>` : ''}</span>`;
 }

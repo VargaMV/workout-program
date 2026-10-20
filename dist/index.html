@@ -477,9 +477,9 @@ const S = {
   'matrix.nomembers': ['A csoportban még nincs tanuló.', 'This group has no trainees yet.'],
   'matrix.nocols': ['Még nincs gyakorlat. Válassz sablont a Sablon fülön, vagy indíts egy edzést.', 'No exercises yet. Pick a template on the Template tab or start a session.'],
   'matrix.all': ['Minden gyakorlat mutatása', 'Show all exercises'],
-  'matrix.legend': ['×N = ennyi edzésen át ugyanazon a lépcsőfokon. "pontos ×M" = ennyi edzésen át ugyanazzal az ismétléssel és súllyal is. → = a következő tervezett edzés.', '×N = sessions in a row on the same step. "exact ×M" = sessions with the same reps and weight too. → = next planned session.'],
-  'streak.tip': ['Egymás utáni edzések ugyanazon a lépcsőfokon', 'Consecutive sessions on the same step'],
-  'exact': ['pontos ×{n}', 'exact ×{n}'], 'exact.tip': ['Ugyanaz a lépcsőfok, ismétlés és súly', 'Same step, reps and weight'],
+  'matrix.legend': ['N/M = ez az N-edik edzés ugyanazon a lépcsőfokon, és az M-edik egymás után ugyanazzal az ismétléssel és súllyal. → = a következő tervezett edzés.', 'N/M = Nth session on the same step, and Mth in a row with the same reps and weight. → = next planned session.'],
+  'streak.tip': ['N/M: N. edzés ezen a lépcsőfokon, ebből M. egymás után ugyanazzal az ismétléssel és súllyal', 'N/M: Nth session on this step, Mth in a row with the same reps and weight'],
+  'reps.n': ['{n}db', '{n} reps'],
   'sessions.empty': ['Még nincs edzés.', 'No sessions yet.'], 'planned': ['tervezett', 'planned'],
   'tpl.current': ['A csoport sablonja', "The group's template"], 'tpl.none': ['– nincs –', '– none –'],
   'tpl.new': ['Új sablon', 'New template'], 'tpl.edit': ['Sablon szerkesztése', 'Edit template'], 'tpl.copy': ['Új időszak (másolat)', 'New period (copy)'],
@@ -696,7 +696,7 @@ const sameStage = (a, b) => (a.progId || b.progId ? a.progId === b.progId : norm
 // Entry detail: reps, optional weight (only when "weighted" is ticked) and an optional note that never counts for streaks.
 const wkey = e => (e.weighted ? String(e.weight || '').trim().replace(',', '.') : '');
 const sameExact = (a, b) => sameStage(a, b) && norm(a.reps) === norm(b.reps) && wkey(a) === wkey(b);
-const extraText = e => [e.reps ? (e.rounds ? `${e.rounds}×${e.reps}` : String(e.reps)) : '', e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
+const extraText = (e, short) => [e.reps ? (short || !e.rounds ? t('reps.n', { n: e.reps }) : `${e.rounds}×${e.reps}`) : '', e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
 
 // All set entries of a trainee for one exercise, newest session first.
 function history(tid, key) {
@@ -1010,11 +1010,11 @@ function toast(msg) {
 
 /* 06-view-groups.js */
 // Home (groups), group page (matrix / sessions / template), exercise summary.
+// "5/2" = 5th session on this progression, 2nd in a row with the same reps and weight.
+const streakLabel = sk => `${sk.n}/${sk.exact}`;
 function streakChips(sk) {
-  if (!sk || !sk.n) return '';
-  const hot = sk.n >= db.settings.threshold;
-  return `<span class="badge ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${sk.n}</span>` +
-    (sk.exact < sk.n ? `<span class="badge ghost" title="${esc(t('exact.tip'))}">${t('exact', { n: sk.exact })}</span>` : '');
+  if (!sk || sk.n < 2) return '';
+  return `<span class="badge ${sk.n >= db.settings.threshold ? 'hot' : ''}" title="${esc(t('streak.tip'))}">${streakLabel(sk)}</span>`;
 }
 
 function backupBanner() {
@@ -1062,8 +1062,8 @@ function cellHtml(tid, key) {
   const { e, s, streak } = L;
   const pl = planned(tid, key);
   const hot = streak.n >= db.settings.threshold;
-  const info = [esc(extraText(e)), fmtDate(s.date), streak.n > 1 && streak.exact < streak.n ? t('exact', { n: streak.exact }) : ''].filter(Boolean).join(' · ');
-  return `<td class="${hot ? 'hot' : ''}">${streak.n > 1 ? `<span class="badge corner ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${streak.n}</span>` : ''}<div class="st ${streak.n > 1 ? 'pad' : ''}">${esc(entryLabel(e))}</div>
+  const info = [esc(extraText(e)), fmtDate(s.date)].filter(Boolean).join(' · ');
+  return `<td class="${hot ? 'hot' : ''}">${streak.n > 1 ? `<span class="badge corner ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">${streakLabel(streak)}</span>` : ''}<div class="st ${streak.n > 1 ? 'pad' : ''}">${esc(entryLabel(e))}</div>
     <small>${info}</small>
     ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${extraText(pl) ? ' · ' + esc(extraText(pl)) : ''}</div>` : ''}</td>`;
 }
@@ -1125,8 +1125,10 @@ V.exsum = ([gid, key]) => {
   return { html: header(exName(key), { back: `/group/${g.id}/matrix`, sub: g.name, actions: edit }) + `<div class="page"><div class="brief-item">${body || `<p class="muted">${t('nodata')}</p>`}</div></div>` };
 };
 
-function personHtml(it) {
-  return `<span class="pn"><a href="#/trainee/${it.t.id}">${esc(it.t.name)}</a>${streakChips(it.streak)}${it.e && extraText(it.e) ? `<small>${esc(extraText(it.e))}</small>` : ''}${it.e && it.e.note ? `<small class="note">“${esc(it.e.note)}”</small>` : ''}</span>`;
+// short: the block's rounds are already announced, so only the reps are shown ("5db").
+function personHtml(it, short) {
+  const detail = it.e ? extraText(it.e, short) : '';
+  return `<span class="pn"><a href="#/trainee/${it.t.id}">${esc(it.t.name)}</a>${streakChips(it.streak)}${detail ? `<small>${esc(detail)}</small>` : ''}${it.e && it.e.note ? `<small class="note">“${esc(it.e.note)}”</small>` : ''}</span>`;
 }
 
 /* 07-view-session.js */
@@ -1205,7 +1207,7 @@ function itemGroupsHtml(s, it, people) {
     return { t: tr, e, streak: e && isSet(e) ? streakAt(h, h.findIndex(x => x.e === e)) : null };
   });
   const { groups, none } = groupByStage(list, key);
-  return groups.map(gr => `<div class="bgroup"><div class="bg-l">${esc(gr.label)} <span class="tag">${gr.items.length}</span></div><div class="bg-n">${gr.items.map(personHtml).join('')}</div></div>`).join('') +
+  return groups.map(gr => `<div class="bgroup"><div class="bg-l">${esc(gr.label)} <span class="tag">${gr.items.length}</span></div><div class="bg-n">${gr.items.map(x => personHtml(x, true)).join('')}</div></div>`).join('') +
     (none.length ? `<div class="bgroup none"><div class="bg-l">${t('nodata')}</div><div class="bg-n">${none.map(x => `<span>${esc(x.t.name)}</span>`).join('')}</div></div>` : '');
 }
 
@@ -1631,7 +1633,7 @@ V.trainee = ([id]) => {
       if (last && sameStage(last.e, x.e)) last.n++; else path.push({ e: x.e, n: 1 });
     }
     return `<div class="card"><div class="row between" style="margin:0"><div class="card-t">${esc(exName(k))}</div>${L ? `<div>${esc(entryLabel(L.e))} ${streakChips(L.streak)}</div>` : ''}</div>
-      <div class="path">${path.map((p, i) => `${i ? `<span class="a">→</span>` : ''}<span class="p">${esc(entryLabel(p.e))} ×${p.n}</span>`).join('')}</div></div>`;
+      <div class="path">${path.map((p, i) => `${i ? `<span class="a">→</span>` : ''}<span class="p">${esc(entryLabel(p.e))} (${p.n})</span>`).join('')}</div></div>`;
   }).join('');
   const days = attended.map(s => {
     const es = db.entries.filter(e => e.sessionId === s.id && e.traineeId === id && isSet(e));

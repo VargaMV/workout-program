@@ -15,7 +15,7 @@ V.trainee = ([id]) => {
       if (last && sameStage(last.e, x.e)) last.n++; else path.push({ e: x.e, n: 1 });
     }
     return `<div class="card"><div class="row between" style="margin:0"><div class="card-t">${esc(exName(k))}</div>${L ? `<div>${esc(entryLabel(L.e))} ${streakChips(L.streak)}</div>` : ''}</div>
-      <div class="path">${path.map((p, i) => `${i ? `<span class="a">→</span>` : ''}<span class="p">${esc(entryLabel(p.e))} ×${p.n}</span>`).join('')}</div></div>`;
+      <div class="path">${path.map((p, i) => `${i ? `<span class="a">→</span>` : ''}<span class="p">${esc(entryLabel(p.e))} (${p.n})</span>`).join('')}</div></div>`;
   }).join('');
   const days = attended.map(s => {
     const es = db.entries.filter(e => e.sessionId === s.id && e.traineeId === id && isSet(e));
