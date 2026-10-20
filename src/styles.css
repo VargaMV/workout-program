@@ -146,12 +146,13 @@ table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
 .matrix .stick { position: sticky; left: 0; z-index: 1; min-width: 78px; max-width: 120px; background: var(--surface2); font-weight: 600; font-size: .9rem; }
 .matrix thead .stick { z-index: 3; }
 .matrix tr:last-child > * { border-bottom: 0; }
-.matrix td .st { font-weight: 600; line-height: 1.2; font-size: .9rem; }
-.matrix td .meta { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; align-items: center; }
+.matrix td .st { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; font-weight: 600; line-height: 1.2; }
+.matrix td .st .badge { flex: none; margin-top: 1px; }
 .matrix td small, .matrix th small { display: block; color: var(--ink2); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: .7rem; line-height: 1.25; }
 .matrix td.hot { background: var(--warn-soft); }
 .matrix td.empty { color: var(--ink2); text-align: center; }
-.matrix td .next { color: var(--accent); font-weight: 600; font-size: .72rem; margin-top: 2px; line-height: 1.2; }
+.matrix td .next { color: var(--accent); font-weight: 600; font-size: .72rem; margin-top: 1px; line-height: 1.2; }
+.matrix td { min-width: 100px; }
 .warn-note { color: var(--warn) !important; }
 .matrix th a:hover { text-decoration: underline; }
 

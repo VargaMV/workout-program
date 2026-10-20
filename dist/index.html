@@ -155,12 +155,13 @@ table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
 .matrix .stick { position: sticky; left: 0; z-index: 1; min-width: 78px; max-width: 120px; background: var(--surface2); font-weight: 600; font-size: .9rem; }
 .matrix thead .stick { z-index: 3; }
 .matrix tr:last-child > * { border-bottom: 0; }
-.matrix td .st { font-weight: 600; line-height: 1.2; font-size: .9rem; }
-.matrix td .meta { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; align-items: center; }
+.matrix td .st { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; font-weight: 600; line-height: 1.2; }
+.matrix td .st .badge { flex: none; margin-top: 1px; }
 .matrix td small, .matrix th small { display: block; color: var(--ink2); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: .7rem; line-height: 1.25; }
 .matrix td.hot { background: var(--warn-soft); }
 .matrix td.empty { color: var(--ink2); text-align: center; }
-.matrix td .next { color: var(--accent); font-weight: 600; font-size: .72rem; margin-top: 2px; line-height: 1.2; }
+.matrix td .next { color: var(--accent); font-weight: 600; font-size: .72rem; margin-top: 1px; line-height: 1.2; }
+.matrix td { min-width: 100px; }
 .warn-note { color: var(--warn) !important; }
 .matrix th a:hover { text-decoration: underline; }
 
@@ -953,9 +954,9 @@ function cellHtml(tid, key) {
   const { e, s, streak } = L;
   const pl = planned(tid, key);
   const hot = streak.n >= db.settings.threshold;
-  return `<td class="${hot ? 'hot' : ''}"><div class="st">${esc(entryLabel(e))}</div>
-    <div class="meta">${streakChips(streak)}</div>
-    <small>${e.reps ? esc(e.reps) + ' · ' : ''}${fmtDate(s.date)}</small>
+  const info = [e.reps ? esc(e.reps) : '', fmtDate(s.date), streak.n > 1 && streak.exact < streak.n ? t('exact', { n: streak.exact }) : ''].filter(Boolean).join(' · ');
+  return `<td class="${hot ? 'hot' : ''}"><div class="st"><span>${esc(entryLabel(e))}</span>${streak.n > 1 ? `<span class="badge ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${streak.n}</span>` : ''}</div>
+    <small>${info}</small>
     ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${pl.reps ? ' · ' + esc(pl.reps) : ''}</div>` : ''}</td>`;
 }
 

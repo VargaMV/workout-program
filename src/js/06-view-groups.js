@@ -51,9 +51,9 @@ function cellHtml(tid, key) {
   const { e, s, streak } = L;
   const pl = planned(tid, key);
   const hot = streak.n >= db.settings.threshold;
-  return `<td class="${hot ? 'hot' : ''}"><div class="st">${esc(entryLabel(e))}</div>
-    <div class="meta">${streakChips(streak)}</div>
-    <small>${e.reps ? esc(e.reps) + ' · ' : ''}${fmtDate(s.date)}</small>
+  const info = [e.reps ? esc(e.reps) : '', fmtDate(s.date), streak.n > 1 && streak.exact < streak.n ? t('exact', { n: streak.exact }) : ''].filter(Boolean).join(' · ');
+  return `<td class="${hot ? 'hot' : ''}"><div class="st"><span>${esc(entryLabel(e))}</span>${streak.n > 1 ? `<span class="badge ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${streak.n}</span>` : ''}</div>
+    <small>${info}</small>
     ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${pl.reps ? ' · ' + esc(pl.reps) : ''}</div>` : ''}</td>`;
 }
 
