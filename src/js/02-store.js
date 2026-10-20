@@ -20,6 +20,7 @@ function normalizeDb(raw) {
   if (s && typeof s === 'object') {
     d.settings = { ...d.settings, ...s, timer: { ...d.settings.timer, ...(s.timer || {}) }, metro: { ...d.settings.metro, ...(s.metro || {}) } };
   }
+  for (const x of d.trainees) delete x.active;
   // Older data kept the usual workout as blocks inside the group: turn it into a named template.
   for (const g of d.groups) {
     if (!Array.isArray(g.template)) continue;

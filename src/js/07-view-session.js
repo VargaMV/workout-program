@@ -60,8 +60,14 @@ function traineeRow(s, tr, key) {
   const idx = e.progId ? lad.findIndex(x => x.id === e.progId) : -1;
   const canUp = lad.length && !e.text && idx < lad.length - 1;
   const d = `data-s="${s.id}" data-t="${tr.id}" data-k="${esc(key)}"`;
-  return `<div class="trow"><div class="tn"><a href="#/trainee/${tr.id}">${esc(tr.name)}</a>${tr.note ? `<span class="prev warn-note">${esc(tr.note)}</span>` : ''}<span class="prev">${prev ? t('last') + ': ' + esc(entryLabel(prev)) + (prev.reps ? ' · ' + esc(prev.reps) : '') : t('first')}</span></div>
-    <div class="tctl"><button class="stage ${set ? '' : 'unset'} ${changed ? 'changed' : ''}" data-a="stage" ${d}><span>${set ? esc(entryLabel(e)) : t('stage.unset')}</span><span class="badges">${set ? streakChips(sk) : ''}</span></button>${canUp ? `<button class="mini" data-a="nextStep" ${d} aria-label="${t('stage.next')}" title="${t('stage.next')}">${icon('up')}</button>` : ''}<input type="text" class="reps" value="${esc(e.reps || '')}" placeholder="${t('reps.ph')}" data-c="reps" ${d}></div></div>`;
+  const wOn = !!e.weighted;
+  return `<div class="trow ${e.note ? 'show-note' : ''} ${wOn ? 'show-w' : ''}"><div class="tn"><a href="#/trainee/${tr.id}">${esc(tr.name)}</a>${tr.note ? `<span class="prev warn-note">${esc(tr.note)}</span>` : ''}<span class="prev">${prev ? t('last') + ': ' + esc(entryLabel(prev)) + (extraText(prev) ? ' · ' + esc(extraText(prev)) : '') : t('first')}</span></div>
+    <div class="tctl"><button class="stage ${set ? '' : 'unset'} ${changed ? 'changed' : ''}" data-a="stage" ${d}><span>${set ? esc(entryLabel(e)) : t('stage.unset')}</span><span class="badges">${set ? streakChips(sk) : ''}</span></button>${canUp ? `<button class="mini" data-a="nextStep" ${d} aria-label="${t('stage.next')}" title="${t('stage.next')}">${icon('up')}</button>` : ''}</div>
+    <div class="tmeta"><input type="text" class="reps" value="${esc(e.reps || '')}" placeholder="${t('reps.ph')}" data-c="reps" ${d}>
+      <button class="kgbtn ${wOn ? 'on' : ''}" data-a="togW" ${d} title="${t('weighted')}">+kg</button>
+      <input type="text" inputmode="decimal" class="wt" value="${esc(e.weight || '')}" placeholder="kg" data-c="weight" ${d}>
+      <button class="icon-btn sm notebtn ${e.note ? 'on' : ''}" data-a="togNote" title="${t('note.btn')}" aria-label="${t('note.btn')}">${icon('edit')}</button></div>
+    <input type="text" class="note-in" value="${esc(e.note || '')}" placeholder="${t('note.ph')}" data-c="note" ${d}></div>`;
 }
 
 // ----- block / item actions -----
@@ -207,7 +213,7 @@ A.delSession = d => confirmBox(t('session.delq'), t('delete'), () => {
 });
 A.addGuest = d => {
   const s = getSession(d.s);
-  const others = db.trainees.filter(x => x.active !== false && !s.attendeeIds.includes(x.id)).sort(byName);
+  const others = db.trainees.filter(x => !s.attendeeIds.includes(x.id)).sort(byName);
   openSheet(`<h2>${t('guest')}</h2><div class="pick-res">${others.map(x => `<button class="btn" data-a="guestPick" data-s="${s.id}" data-t="${x.id}">${esc(x.name)}</button>`).join('') || `<p class="muted">${t('pick.none')}</p>`}</div>
     <form data-f="guestNew" data-s="${s.id}"><label class="f">${t('guest.new')}<input type="text" name="name" autocomplete="off"></label><div class="row end"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></div></form>`);
 };
@@ -215,7 +221,7 @@ A.guestPick = d => { const s = getSession(d.s); s.attendeeIds.push(d.t); syncEnt
 F.guestNew = (fd, d) => {
   const name = String(fd.get('name') || '').trim();
   if (!name) return;
-  const tr = { id: uid(), name, note: '', active: true };
+  const tr = { id: uid(), name, note: '' };
   db.trainees.push(tr);
   const s = getSession(d.s); s.attendeeIds.push(tr.id); syncEntries(s); save(); closeSheet(); render();
 };
@@ -250,6 +256,19 @@ A.nextStep = d => {
   applyStep(e, lad[i + 1]); save(); render();
 };
 C.reps = (v, d) => { getEntry(d.s, d.t, d.k).reps = v.trim(); save(); };
+C.weight = (v, d) => { getEntry(d.s, d.t, d.k).weight = v.trim(); save(); };
+C.note = (v, d) => { getEntry(d.s, d.t, d.k).note = v.trim(); save(); };
+A.togW = (d, el) => {
+  const e = getEntry(d.s, d.t, d.k);
+  e.weighted = !e.weighted; save();
+  const row = el.closest('.trow');
+  row.classList.toggle('show-w', e.weighted); el.classList.toggle('on', e.weighted);
+  if (e.weighted) row.querySelector('.wt').focus();
+};
+A.togNote = (d, el) => {
+  const row = el.closest('.trow'), show = row.classList.toggle('show-note');
+  if (show) row.querySelector('.note-in').focus();
+};
 
 // ----- block briefing: who does which progression -----
 V.brief = ([sid, bid]) => {

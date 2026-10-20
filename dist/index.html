@@ -198,7 +198,7 @@ table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
 .join .btn { flex: 1; border-radius: 0; }
 .join .btn:first-child { border-radius: var(--rs) 0 0 var(--rs); }
 .join .btn:last-child { border-radius: 0 var(--rs) var(--rs) 0; margin-left: -1px; }
-.trow { display: grid; grid-template-columns: 1fr; gap: 4px; padding: 5px 6px; margin-top: 4px; border-radius: var(--rs); background: var(--bg); }
+.trow { display: grid; grid-template-columns: 1fr; grid-template-areas: 'tn' 'ctl' 'meta' 'note'; gap: 4px; padding: 5px 6px; margin-top: 4px; border-radius: var(--rs); background: var(--bg); }
 .trow .tn { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .trow .tn a { font-weight: 600; }
 .trow .prev { font-size: .74rem; color: var(--ink2); }
@@ -212,7 +212,21 @@ table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
 .stage.changed { border-color: var(--accent); background: var(--accent-soft); }
 .stage.unset { border-style: dashed; color: var(--ink2); font-weight: 500; }
 .mini { width: 38px; min-height: 38px; border-radius: var(--rs); border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: var(--accent); flex: none; }
-.trow input.reps { flex: 0 0 34%; width: 34%; min-height: 38px; font-size: .88rem; }
+.tctl { grid-area: ctl; }
+.trow .tn { grid-area: tn; }
+.tmeta { grid-area: meta; display: flex; gap: 4px; align-items: stretch; }
+.tmeta input { min-height: 34px; font-size: .88rem; }
+.tmeta .reps { flex: 1 1 60px; min-width: 0; }
+.tmeta .wt { display: none; flex: 0 0 64px; width: 64px; text-align: right; }
+.trow.show-w .wt { display: block; }
+.kgbtn { flex: none; min-height: 34px; padding: 0 9px; border-radius: var(--rs); border: 1px solid var(--line); background: var(--surface); color: var(--ink2); font-weight: 600; font-size: .82rem; cursor: pointer; }
+.kgbtn.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.tmeta .notebtn { width: 34px; height: auto; min-height: 34px; border: 1px solid var(--line); background: var(--surface); }
+.tmeta .notebtn.on { color: var(--accent); border-color: var(--accent); }
+.note-in { grid-area: note; display: none; min-height: 34px; font-size: .88rem; }
+.trow.show-note .note-in { display: block; }
+.note { font-style: italic; }
+.tl-note { font-size: .8rem; color: var(--ink2); font-style: italic; padding: 0 0 2px; }
 .iv-sum { padding: 6px 0; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: .9rem; }
 .iv-sum b { color: var(--work); }
 .iv-item { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0; }
@@ -333,7 +347,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 @media (min-width: 560px) {
   .hide-s { display: inline; }
   .page { padding: 12px; }
-  .trow { grid-template-columns: minmax(150px, 220px) 1fr; align-items: center; }
+  .trow { grid-template-columns: minmax(150px, 220px) 1fr; grid-template-areas: 'tn ctl' 'tn meta' 'tn note'; align-items: center; }
   .trow .tn { flex-direction: column; gap: 0; }
   .overlay { align-items: center; padding: 20px; }
   .sheet { max-height: 92%; }
@@ -442,9 +456,9 @@ const S = {
   'matrix.nomembers': ['A csoportban még nincs tanuló.', 'This group has no trainees yet.'],
   'matrix.nocols': ['Még nincs gyakorlat. Válassz sablont a Sablon fülön, vagy indíts egy edzést.', 'No exercises yet. Pick a template on the Template tab or start a session.'],
   'matrix.all': ['Minden gyakorlat mutatása', 'Show all exercises'],
-  'matrix.legend': ['×N = ennyi edzésen át ugyanazon a lépcsőfokon. "pontos ×M" = ennyi edzésen át ugyanazzal az ismétléssel/megjegyzéssel is. → = a következő tervezett edzés.', '×N = sessions in a row on the same step. "exact ×M" = sessions with the same reps/note too. → = next planned session.'],
+  'matrix.legend': ['×N = ennyi edzésen át ugyanazon a lépcsőfokon. "pontos ×M" = ennyi edzésen át ugyanazzal az ismétléssel és súllyal is. → = a következő tervezett edzés.', '×N = sessions in a row on the same step. "exact ×M" = sessions with the same reps and weight too. → = next planned session.'],
   'streak.tip': ['Egymás utáni edzések ugyanazon a lépcsőfokon', 'Consecutive sessions on the same step'],
-  'exact': ['pontos ×{n}', 'exact ×{n}'], 'exact.tip': ['Ugyanaz a lépcsőfok és ugyanaz az ismétlés/megjegyzés', 'Same step and same reps/note'],
+  'exact': ['pontos ×{n}', 'exact ×{n}'], 'exact.tip': ['Ugyanaz a lépcsőfok, ismétlés és súly', 'Same step, reps and weight'],
   'sessions.empty': ['Még nincs edzés.', 'No sessions yet.'], 'planned': ['tervezett', 'planned'],
   'tpl.current': ['A csoport sablonja', "The group's template"], 'tpl.none': ['– nincs –', '– none –'],
   'tpl.new': ['Új sablon', 'New template'], 'tpl.edit': ['Sablon szerkesztése', 'Edit template'], 'tpl.copy': ['Új időszak (másolat)', 'New period (copy)'],
@@ -481,11 +495,11 @@ const S = {
   'stage.unset': ['Nincs megadva', 'Not set'], 'stage.next': ['Következő lépcsőfok', 'Next step'], 'stage.clear': ['Törlés', 'Clear'],
   'stage.noladder': ['Ehhez a gyakorlathoz nincs lépcsősor, írd be szabadon.', 'This exercise has no ladder; type it freely.'],
   'stage.free': ['Szabad szöveg (pl. sérülés miatti variáció)', 'Free text (e.g. an easier variation for an injury)'], 'stage.free.ph': ['pl. térdelő fekvőtámasz', 'e.g. knee push-up'],
-  'reps.ph': ['ismétlés / megjegyzés', 'reps / note'],
+  'reps.ph': ['ism.', 'reps'], 'weighted': ['Súlyozott', 'Weighted'], 'note.btn': ['Megjegyzés', 'Note'], 'note.ph': ['Megjegyzés (opcionális)', 'Note (optional)'],
   'brief.none': ['', ''],
-  'attended': ['Részt vett', 'Attended'], 'nogroup': ['nincs csoport', 'no group'], 'archived': ['archivált', 'archived'], 'active': ['Aktív', 'Active'],
+  'attended': ['Részt vett', 'Attended'], 'nogroup': ['nincs csoport', 'no group'],
   'trainee.new': ['Új tanuló', 'New trainee'], 'trainee.note': ['Megjegyzés', 'Note'], 'trainee.note.ph': ['pl. térdsérülés', 'e.g. knee injury'],
-  'trainee.delq': ['A tanuló és minden előzménye törlődik. Archiválni is lehet (Aktív kipipálás nélkül).', 'The trainee and all their history will be deleted. You can archive instead (untick Active).'],
+  'trainee.delq': ['A tanuló és minden előzménye törlődik.', 'The trainee and all their history will be deleted.'],
   'trainee.progress': ['Haladás', 'Progress'], 'trainee.history': ['Edzéstörténet', 'Session history'],
   'ex.new': ['Új gyakorlat', 'New exercise'], 'ex.edit': ['Lépcsők', 'Steps'], 'ex.kind': ['Típus', 'Type'], 'ex.steps': ['Progressziólépcsők', 'Progression steps'],
   'ex.steps.help': ['Könnyűtől a nehéz felé. A sorrend számít, a nevek átírhatók.', 'From easiest to hardest. Order matters; names can be renamed.'],
@@ -546,6 +560,7 @@ function normalizeDb(raw) {
   if (s && typeof s === 'object') {
     d.settings = { ...d.settings, ...s, timer: { ...d.settings.timer, ...(s.timer || {}) }, metro: { ...d.settings.metro, ...(s.metro || {}) } };
   }
+  for (const x of d.trainees) delete x.active;
   // Older data kept the usual workout as blocks inside the group: turn it into a named template.
   for (const g of d.groups) {
     if (!Array.isArray(g.template)) continue;
@@ -644,7 +659,10 @@ function entryLabel(e) {
   return e.text || '';
 }
 const sameStage = (a, b) => (a.progId || b.progId ? a.progId === b.progId : norm(a.text) === norm(b.text));
-const sameExact = (a, b) => sameStage(a, b) && norm(a.reps) === norm(b.reps);
+// Entry detail: reps, optional weight (only when "weighted" is ticked) and an optional note that never counts for streaks.
+const wkey = e => (e.weighted ? String(e.weight || '').trim().replace(',', '.') : '');
+const sameExact = (a, b) => sameStage(a, b) && norm(a.reps) === norm(b.reps) && wkey(a) === wkey(b);
+const extraText = e => [String(e.reps || '').trim(), e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
 
 // All set entries of a trainee for one exercise, newest session first.
 function history(tid, key) {
@@ -657,7 +675,7 @@ function history(tid, key) {
   return out.sort((x, y) => sessionCmp(y.s, x.s));
 }
 
-// Consecutive attended sessions on the same stage (n) and on the same stage+reps (exact), starting at index i.
+// Consecutive attended sessions on the same stage (n) and on the same stage+reps+weight (exact), starting at index i.
 function streakAt(h, i) {
   if (i < 0 || i >= h.length) return { n: 0, exact: 0 };
   const base = h[i].e;
@@ -692,6 +710,7 @@ function prefill(s, tid, key) {
   const o = {};
   if (p.progId) { o.progId = p.progId; o.label = p.label; } else if (p.text) o.text = p.text;
   if (p.reps) o.reps = p.reps;
+  if (p.weighted) { o.weighted = true; o.weight = p.weight; }
   return o;
 }
 
@@ -711,7 +730,7 @@ function syncEntries(s) {
 
 const cloneBlocks = blocks => JSON.parse(JSON.stringify(blocks)).map(b => ({ ...b, id: uid(), items: b.items.map(i => ({ ...i, id: uid() })) }));
 
-const activeMembers = g => g.traineeIds.map(getTrainee).filter(x => x && x.active !== false).sort(byName);
+const activeMembers = g => g.traineeIds.map(getTrainee).filter(Boolean).sort(byName);
 
 function groupColumns(g) {
   const main = new Map();
@@ -1008,10 +1027,10 @@ function cellHtml(tid, key) {
   const { e, s, streak } = L;
   const pl = planned(tid, key);
   const hot = streak.n >= db.settings.threshold;
-  const info = [e.reps ? esc(e.reps) : '', fmtDate(s.date), streak.n > 1 && streak.exact < streak.n ? t('exact', { n: streak.exact }) : ''].filter(Boolean).join(' · ');
+  const info = [esc(extraText(e)), fmtDate(s.date), streak.n > 1 && streak.exact < streak.n ? t('exact', { n: streak.exact }) : ''].filter(Boolean).join(' · ');
   return `<td class="${hot ? 'hot' : ''}">${streak.n > 1 ? `<span class="badge corner ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${streak.n}</span>` : ''}<div class="st ${streak.n > 1 ? 'pad' : ''}">${esc(entryLabel(e))}</div>
     <small>${info}</small>
-    ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${pl.reps ? ' · ' + esc(pl.reps) : ''}</div>` : ''}</td>`;
+    ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${extraText(pl) ? ' · ' + esc(extraText(pl)) : ''}</div>` : ''}</td>`;
 }
 
 function matrixTab(g) {
@@ -1071,7 +1090,7 @@ V.exsum = ([gid, key]) => {
 };
 
 function personHtml(it) {
-  return `<span class="pn"><a href="#/trainee/${it.t.id}">${esc(it.t.name)}</a>${streakChips(it.streak)}${it.e && it.e.reps ? `<small>${esc(it.e.reps)}</small>` : ''}</span>`;
+  return `<span class="pn"><a href="#/trainee/${it.t.id}">${esc(it.t.name)}</a>${streakChips(it.streak)}${it.e && extraText(it.e) ? `<small>${esc(extraText(it.e))}</small>` : ''}${it.e && it.e.note ? `<small class="note">“${esc(it.e.note)}”</small>` : ''}</span>`;
 }
 
 /* 07-view-session.js */
@@ -1137,8 +1156,14 @@ function traineeRow(s, tr, key) {
   const idx = e.progId ? lad.findIndex(x => x.id === e.progId) : -1;
   const canUp = lad.length && !e.text && idx < lad.length - 1;
   const d = `data-s="${s.id}" data-t="${tr.id}" data-k="${esc(key)}"`;
-  return `<div class="trow"><div class="tn"><a href="#/trainee/${tr.id}">${esc(tr.name)}</a>${tr.note ? `<span class="prev warn-note">${esc(tr.note)}</span>` : ''}<span class="prev">${prev ? t('last') + ': ' + esc(entryLabel(prev)) + (prev.reps ? ' · ' + esc(prev.reps) : '') : t('first')}</span></div>
-    <div class="tctl"><button class="stage ${set ? '' : 'unset'} ${changed ? 'changed' : ''}" data-a="stage" ${d}><span>${set ? esc(entryLabel(e)) : t('stage.unset')}</span><span class="badges">${set ? streakChips(sk) : ''}</span></button>${canUp ? `<button class="mini" data-a="nextStep" ${d} aria-label="${t('stage.next')}" title="${t('stage.next')}">${icon('up')}</button>` : ''}<input type="text" class="reps" value="${esc(e.reps || '')}" placeholder="${t('reps.ph')}" data-c="reps" ${d}></div></div>`;
+  const wOn = !!e.weighted;
+  return `<div class="trow ${e.note ? 'show-note' : ''} ${wOn ? 'show-w' : ''}"><div class="tn"><a href="#/trainee/${tr.id}">${esc(tr.name)}</a>${tr.note ? `<span class="prev warn-note">${esc(tr.note)}</span>` : ''}<span class="prev">${prev ? t('last') + ': ' + esc(entryLabel(prev)) + (extraText(prev) ? ' · ' + esc(extraText(prev)) : '') : t('first')}</span></div>
+    <div class="tctl"><button class="stage ${set ? '' : 'unset'} ${changed ? 'changed' : ''}" data-a="stage" ${d}><span>${set ? esc(entryLabel(e)) : t('stage.unset')}</span><span class="badges">${set ? streakChips(sk) : ''}</span></button>${canUp ? `<button class="mini" data-a="nextStep" ${d} aria-label="${t('stage.next')}" title="${t('stage.next')}">${icon('up')}</button>` : ''}</div>
+    <div class="tmeta"><input type="text" class="reps" value="${esc(e.reps || '')}" placeholder="${t('reps.ph')}" data-c="reps" ${d}>
+      <button class="kgbtn ${wOn ? 'on' : ''}" data-a="togW" ${d} title="${t('weighted')}">+kg</button>
+      <input type="text" inputmode="decimal" class="wt" value="${esc(e.weight || '')}" placeholder="kg" data-c="weight" ${d}>
+      <button class="icon-btn sm notebtn ${e.note ? 'on' : ''}" data-a="togNote" title="${t('note.btn')}" aria-label="${t('note.btn')}">${icon('edit')}</button></div>
+    <input type="text" class="note-in" value="${esc(e.note || '')}" placeholder="${t('note.ph')}" data-c="note" ${d}></div>`;
 }
 
 // ----- block / item actions -----
@@ -1284,7 +1309,7 @@ A.delSession = d => confirmBox(t('session.delq'), t('delete'), () => {
 });
 A.addGuest = d => {
   const s = getSession(d.s);
-  const others = db.trainees.filter(x => x.active !== false && !s.attendeeIds.includes(x.id)).sort(byName);
+  const others = db.trainees.filter(x => !s.attendeeIds.includes(x.id)).sort(byName);
   openSheet(`<h2>${t('guest')}</h2><div class="pick-res">${others.map(x => `<button class="btn" data-a="guestPick" data-s="${s.id}" data-t="${x.id}">${esc(x.name)}</button>`).join('') || `<p class="muted">${t('pick.none')}</p>`}</div>
     <form data-f="guestNew" data-s="${s.id}"><label class="f">${t('guest.new')}<input type="text" name="name" autocomplete="off"></label><div class="row end"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></div></form>`);
 };
@@ -1292,7 +1317,7 @@ A.guestPick = d => { const s = getSession(d.s); s.attendeeIds.push(d.t); syncEnt
 F.guestNew = (fd, d) => {
   const name = String(fd.get('name') || '').trim();
   if (!name) return;
-  const tr = { id: uid(), name, note: '', active: true };
+  const tr = { id: uid(), name, note: '' };
   db.trainees.push(tr);
   const s = getSession(d.s); s.attendeeIds.push(tr.id); syncEntries(s); save(); closeSheet(); render();
 };
@@ -1327,6 +1352,19 @@ A.nextStep = d => {
   applyStep(e, lad[i + 1]); save(); render();
 };
 C.reps = (v, d) => { getEntry(d.s, d.t, d.k).reps = v.trim(); save(); };
+C.weight = (v, d) => { getEntry(d.s, d.t, d.k).weight = v.trim(); save(); };
+C.note = (v, d) => { getEntry(d.s, d.t, d.k).note = v.trim(); save(); };
+A.togW = (d, el) => {
+  const e = getEntry(d.s, d.t, d.k);
+  e.weighted = !e.weighted; save();
+  const row = el.closest('.trow');
+  row.classList.toggle('show-w', e.weighted); el.classList.toggle('on', e.weighted);
+  if (e.weighted) row.querySelector('.wt').focus();
+};
+A.togNote = (d, el) => {
+  const row = el.closest('.trow'), show = row.classList.toggle('show-note');
+  if (show) row.querySelector('.note-in').focus();
+};
 
 // ----- block briefing: who does which progression -----
 V.brief = ([sid, bid]) => {
@@ -1510,9 +1548,9 @@ V.trainee = ([id]) => {
   }).join('');
   const days = attended.map(s => {
     const es = db.entries.filter(e => e.sessionId === s.id && e.traineeId === id && isSet(e));
-    return `<div class="tl-day"><div class="d"><a href="#/session/${s.id}">${fmtLong(s.date)}</a></div>${es.map(e => `<div class="tl-ent"><span>${esc(exName(e.ek))}</span><span>${esc(entryLabel(e))}${e.reps ? ' · ' + esc(e.reps) : ''}</span></div>`).join('') || `<div class="muted">${t('attended')}</div>`}</div>`;
+    return `<div class="tl-day"><div class="d"><a href="#/session/${s.id}">${fmtLong(s.date)}</a></div>${es.map(e => `<div class="tl-ent"><span>${esc(exName(e.ek))}</span><span>${esc(entryLabel(e))}${extraText(e) ? ' · ' + esc(extraText(e)) : ''}</span></div>${e.note ? `<div class="tl-note">“${esc(e.note)}”</div>` : ''}`).join('') || `<div class="muted">${t('attended')}</div>`}</div>`;
   }).join('');
-  const info = `<div class="card"><div class="muted">${groups.map(g => esc(g.name)).join(', ') || t('nogroup')} · ${t('n.sessions', { n: attended.length })}${tr.active === false ? ' · ' + t('archived') : ''}</div>${tr.note ? `<div class="warn-note" style="margin-top:6px">${esc(tr.note)}</div>` : ''}</div>`;
+  const info = `<div class="card"><div class="muted">${groups.map(g => esc(g.name)).join(', ') || t('nogroup')} · ${t('n.sessions', { n: attended.length })}</div>${tr.note ? `<div class="warn-note" style="margin-top:6px">${esc(tr.note)}</div>` : ''}</div>`;
   return { html: header(tr.name, { back: groups[0] ? `/group/${groups[0].id}/matrix` : '/', actions: `<button class="icon-btn" data-a="editTrainee" data-id="${id}" aria-label="${t('edit')}">${icon('edit')}</button>` }) +
     `<div class="page">${info}<h2>${t('trainee.progress')}</h2>${rows || `<p class="muted">${t('nodata')}</p>`}<h2 style="margin-top:10px">${t('trainee.history')}</h2><div class="card">${days || `<p class="muted">${t('nodata')}</p>`}</div></div>` };
 };
@@ -1532,7 +1570,7 @@ V.manage = ([tab = 'trainees']) => {
     body = `<input type="search" data-i="exSearch" placeholder="${t('search')}" style="margin-bottom:12px"><div class="rows" id="exList">${exList('')}</div>
       <button class="btn primary full" data-a="newExercise">${icon('plus')} ${t('ex.new')}</button>`;
   } else {
-    body = `<div class="rows">${[...db.trainees].sort(byName).map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}"><span class="grow"><b>${esc(x.name)}</b>${x.active === false ? `<span class="tag">${t('archived')}</span>` : ''}<div class="muted">${esc(db.groups.filter(g => g.traineeIds.includes(x.id)).map(g => g.name).join(', ') || t('nogroup'))}${x.note ? ' · ' + esc(x.note) : ''}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
+    body = `<div class="rows">${[...db.trainees].sort(byName).map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}"><span class="grow"><b>${esc(x.name)}</b><div class="muted">${esc(db.groups.filter(g => g.traineeIds.includes(x.id)).map(g => g.name).join(', ') || t('nogroup'))}${x.note ? ' · ' + esc(x.note) : ''}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
       <button class="btn primary full" data-a="editTrainee">${icon('plus')} ${t('trainee.new')}</button>`;
   }
   return { html: header(t('nav.manage')) + nav + `<div class="page">${body}</div>` };
@@ -1544,12 +1582,11 @@ function exList(q) {
 I.exSearch = v => { $('#exList').innerHTML = exList(v); };
 
 A.editTrainee = ({ id }) => {
-  const tr = id ? getTrainee(id) : { name: '', note: '', active: true };
+  const tr = id ? getTrainee(id) : { name: '', note: '' };
   openSheet(`<h2>${id ? t('edit') : t('trainee.new')}</h2><form data-f="saveTrainee" data-id="${id || ''}">
     <label class="f">${t('name')}<input type="text" name="name" value="${esc(tr.name)}" required autofocus autocomplete="off"></label>
     <label class="f">${t('trainee.note')}<input type="text" name="note" value="${esc(tr.note || '')}" placeholder="${t('trainee.note.ph')}"></label>
     ${db.groups.length ? `<div class="muted">${t('tab.groups')}</div><div class="checklist">${[...db.groups].sort(byName).map(g => `<label class="check"><input type="checkbox" name="g" value="${g.id}" ${g.traineeIds.includes(id) ? 'checked' : ''}> ${esc(g.name)}</label>`).join('')}</div>` : ''}
-    <label class="check"><input type="checkbox" name="active" ${tr.active !== false ? 'checked' : ''}> ${t('active')}</label>
     <div class="row between">${id ? `<button type="button" class="btn ghost-danger" data-a="delTrainee" data-id="${id}">${t('delete')}</button>` : '<span></span>'}<span class="row"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></span></div></form>`);
 };
 F.saveTrainee = (fd, d) => {
@@ -1557,7 +1594,7 @@ F.saveTrainee = (fd, d) => {
   if (!name) return;
   let tr = d.id && getTrainee(d.id);
   if (!tr) { tr = { id: uid() }; db.trainees.push(tr); }
-  tr.name = name; tr.note = String(fd.get('note') || '').trim(); tr.active = fd.get('active') === 'on';
+  tr.name = name; tr.note = String(fd.get('note') || '').trim();
   const gs = fd.getAll('g');
   db.groups.forEach(g => {
     const has = g.traineeIds.includes(tr.id), want = gs.includes(g.id);
@@ -1570,7 +1607,7 @@ A.delTrainee = ({ id }) => confirmBox(t('trainee.delq'), t('delete'), () => { de
 
 A.editGroup = ({ id }) => {
   const g = getGroup(id);
-  const trs = db.trainees.filter(x => x.active !== false || g.traineeIds.includes(x.id)).sort(byName);
+  const trs = [...db.trainees].sort(byName);
   openSheet(`<h2>${t('group.edit')}</h2><form data-f="saveGroup" data-id="${id}">
     <label class="f">${t('name')}<input type="text" name="name" value="${esc(g.name)}" required autocomplete="off"></label>
     <div class="muted">${t('group.members')}</div>
@@ -1584,7 +1621,7 @@ F.saveGroup = (fd, d) => {
   g.name = name; g.traineeIds = fd.getAll('m'); save(); closeSheet(); render();
 };
 A.quickTrainee = ({ id }) => promptBox(t('trainee.new'), t('name'), '', name => {
-  const tr = { id: uid(), name, note: '', active: true };
+  const tr = { id: uid(), name, note: '' };
   db.trainees.push(tr); getGroup(id).traineeIds.push(tr.id); save(); render();
   A.editGroup({ id });
 });

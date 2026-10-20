@@ -18,7 +18,10 @@ function entryLabel(e) {
   return e.text || '';
 }
 const sameStage = (a, b) => (a.progId || b.progId ? a.progId === b.progId : norm(a.text) === norm(b.text));
-const sameExact = (a, b) => sameStage(a, b) && norm(a.reps) === norm(b.reps);
+// Entry detail: reps, optional weight (only when "weighted" is ticked) and an optional note that never counts for streaks.
+const wkey = e => (e.weighted ? String(e.weight || '').trim().replace(',', '.') : '');
+const sameExact = (a, b) => sameStage(a, b) && norm(a.reps) === norm(b.reps) && wkey(a) === wkey(b);
+const extraText = e => [String(e.reps || '').trim(), e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
 
 // All set entries of a trainee for one exercise, newest session first.
 function history(tid, key) {
@@ -31,7 +34,7 @@ function history(tid, key) {
   return out.sort((x, y) => sessionCmp(y.s, x.s));
 }
 
-// Consecutive attended sessions on the same stage (n) and on the same stage+reps (exact), starting at index i.
+// Consecutive attended sessions on the same stage (n) and on the same stage+reps+weight (exact), starting at index i.
 function streakAt(h, i) {
   if (i < 0 || i >= h.length) return { n: 0, exact: 0 };
   const base = h[i].e;
@@ -66,6 +69,7 @@ function prefill(s, tid, key) {
   const o = {};
   if (p.progId) { o.progId = p.progId; o.label = p.label; } else if (p.text) o.text = p.text;
   if (p.reps) o.reps = p.reps;
+  if (p.weighted) { o.weighted = true; o.weight = p.weight; }
   return o;
 }
 
@@ -85,7 +89,7 @@ function syncEntries(s) {
 
 const cloneBlocks = blocks => JSON.parse(JSON.stringify(blocks)).map(b => ({ ...b, id: uid(), items: b.items.map(i => ({ ...i, id: uid() })) }));
 
-const activeMembers = g => g.traineeIds.map(getTrainee).filter(x => x && x.active !== false).sort(byName);
+const activeMembers = g => g.traineeIds.map(getTrainee).filter(Boolean).sort(byName);
 
 function groupColumns(g) {
   const main = new Map();

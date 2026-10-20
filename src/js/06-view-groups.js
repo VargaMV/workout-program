@@ -51,10 +51,10 @@ function cellHtml(tid, key) {
   const { e, s, streak } = L;
   const pl = planned(tid, key);
   const hot = streak.n >= db.settings.threshold;
-  const info = [e.reps ? esc(e.reps) : '', fmtDate(s.date), streak.n > 1 && streak.exact < streak.n ? t('exact', { n: streak.exact }) : ''].filter(Boolean).join(' · ');
+  const info = [esc(extraText(e)), fmtDate(s.date), streak.n > 1 && streak.exact < streak.n ? t('exact', { n: streak.exact }) : ''].filter(Boolean).join(' · ');
   return `<td class="${hot ? 'hot' : ''}">${streak.n > 1 ? `<span class="badge corner ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${streak.n}</span>` : ''}<div class="st ${streak.n > 1 ? 'pad' : ''}">${esc(entryLabel(e))}</div>
     <small>${info}</small>
-    ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${pl.reps ? ' · ' + esc(pl.reps) : ''}</div>` : ''}</td>`;
+    ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${extraText(pl) ? ' · ' + esc(extraText(pl)) : ''}</div>` : ''}</td>`;
 }
 
 function matrixTab(g) {
@@ -114,5 +114,5 @@ V.exsum = ([gid, key]) => {
 };
 
 function personHtml(it) {
-  return `<span class="pn"><a href="#/trainee/${it.t.id}">${esc(it.t.name)}</a>${streakChips(it.streak)}${it.e && it.e.reps ? `<small>${esc(it.e.reps)}</small>` : ''}</span>`;
+  return `<span class="pn"><a href="#/trainee/${it.t.id}">${esc(it.t.name)}</a>${streakChips(it.streak)}${it.e && extraText(it.e) ? `<small>${esc(extraText(it.e))}</small>` : ''}${it.e && it.e.note ? `<small class="note">“${esc(it.e.note)}”</small>` : ''}</span>`;
 }

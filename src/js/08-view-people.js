@@ -19,9 +19,9 @@ V.trainee = ([id]) => {
   }).join('');
   const days = attended.map(s => {
     const es = db.entries.filter(e => e.sessionId === s.id && e.traineeId === id && isSet(e));
-    return `<div class="tl-day"><div class="d"><a href="#/session/${s.id}">${fmtLong(s.date)}</a></div>${es.map(e => `<div class="tl-ent"><span>${esc(exName(e.ek))}</span><span>${esc(entryLabel(e))}${e.reps ? ' · ' + esc(e.reps) : ''}</span></div>`).join('') || `<div class="muted">${t('attended')}</div>`}</div>`;
+    return `<div class="tl-day"><div class="d"><a href="#/session/${s.id}">${fmtLong(s.date)}</a></div>${es.map(e => `<div class="tl-ent"><span>${esc(exName(e.ek))}</span><span>${esc(entryLabel(e))}${extraText(e) ? ' · ' + esc(extraText(e)) : ''}</span></div>${e.note ? `<div class="tl-note">“${esc(e.note)}”</div>` : ''}`).join('') || `<div class="muted">${t('attended')}</div>`}</div>`;
   }).join('');
-  const info = `<div class="card"><div class="muted">${groups.map(g => esc(g.name)).join(', ') || t('nogroup')} · ${t('n.sessions', { n: attended.length })}${tr.active === false ? ' · ' + t('archived') : ''}</div>${tr.note ? `<div class="warn-note" style="margin-top:6px">${esc(tr.note)}</div>` : ''}</div>`;
+  const info = `<div class="card"><div class="muted">${groups.map(g => esc(g.name)).join(', ') || t('nogroup')} · ${t('n.sessions', { n: attended.length })}</div>${tr.note ? `<div class="warn-note" style="margin-top:6px">${esc(tr.note)}</div>` : ''}</div>`;
   return { html: header(tr.name, { back: groups[0] ? `/group/${groups[0].id}/matrix` : '/', actions: `<button class="icon-btn" data-a="editTrainee" data-id="${id}" aria-label="${t('edit')}">${icon('edit')}</button>` }) +
     `<div class="page">${info}<h2>${t('trainee.progress')}</h2>${rows || `<p class="muted">${t('nodata')}</p>`}<h2 style="margin-top:10px">${t('trainee.history')}</h2><div class="card">${days || `<p class="muted">${t('nodata')}</p>`}</div></div>` };
 };
@@ -41,7 +41,7 @@ V.manage = ([tab = 'trainees']) => {
     body = `<input type="search" data-i="exSearch" placeholder="${t('search')}" style="margin-bottom:12px"><div class="rows" id="exList">${exList('')}</div>
       <button class="btn primary full" data-a="newExercise">${icon('plus')} ${t('ex.new')}</button>`;
   } else {
-    body = `<div class="rows">${[...db.trainees].sort(byName).map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}"><span class="grow"><b>${esc(x.name)}</b>${x.active === false ? `<span class="tag">${t('archived')}</span>` : ''}<div class="muted">${esc(db.groups.filter(g => g.traineeIds.includes(x.id)).map(g => g.name).join(', ') || t('nogroup'))}${x.note ? ' · ' + esc(x.note) : ''}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
+    body = `<div class="rows">${[...db.trainees].sort(byName).map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}"><span class="grow"><b>${esc(x.name)}</b><div class="muted">${esc(db.groups.filter(g => g.traineeIds.includes(x.id)).map(g => g.name).join(', ') || t('nogroup'))}${x.note ? ' · ' + esc(x.note) : ''}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
       <button class="btn primary full" data-a="editTrainee">${icon('plus')} ${t('trainee.new')}</button>`;
   }
   return { html: header(t('nav.manage')) + nav + `<div class="page">${body}</div>` };
@@ -53,12 +53,11 @@ function exList(q) {
 I.exSearch = v => { $('#exList').innerHTML = exList(v); };
 
 A.editTrainee = ({ id }) => {
-  const tr = id ? getTrainee(id) : { name: '', note: '', active: true };
+  const tr = id ? getTrainee(id) : { name: '', note: '' };
   openSheet(`<h2>${id ? t('edit') : t('trainee.new')}</h2><form data-f="saveTrainee" data-id="${id || ''}">
     <label class="f">${t('name')}<input type="text" name="name" value="${esc(tr.name)}" required autofocus autocomplete="off"></label>
     <label class="f">${t('trainee.note')}<input type="text" name="note" value="${esc(tr.note || '')}" placeholder="${t('trainee.note.ph')}"></label>
     ${db.groups.length ? `<div class="muted">${t('tab.groups')}</div><div class="checklist">${[...db.groups].sort(byName).map(g => `<label class="check"><input type="checkbox" name="g" value="${g.id}" ${g.traineeIds.includes(id) ? 'checked' : ''}> ${esc(g.name)}</label>`).join('')}</div>` : ''}
-    <label class="check"><input type="checkbox" name="active" ${tr.active !== false ? 'checked' : ''}> ${t('active')}</label>
     <div class="row between">${id ? `<button type="button" class="btn ghost-danger" data-a="delTrainee" data-id="${id}">${t('delete')}</button>` : '<span></span>'}<span class="row"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></span></div></form>`);
 };
 F.saveTrainee = (fd, d) => {
@@ -66,7 +65,7 @@ F.saveTrainee = (fd, d) => {
   if (!name) return;
   let tr = d.id && getTrainee(d.id);
   if (!tr) { tr = { id: uid() }; db.trainees.push(tr); }
-  tr.name = name; tr.note = String(fd.get('note') || '').trim(); tr.active = fd.get('active') === 'on';
+  tr.name = name; tr.note = String(fd.get('note') || '').trim();
   const gs = fd.getAll('g');
   db.groups.forEach(g => {
     const has = g.traineeIds.includes(tr.id), want = gs.includes(g.id);
@@ -79,7 +78,7 @@ A.delTrainee = ({ id }) => confirmBox(t('trainee.delq'), t('delete'), () => { de
 
 A.editGroup = ({ id }) => {
   const g = getGroup(id);
-  const trs = db.trainees.filter(x => x.active !== false || g.traineeIds.includes(x.id)).sort(byName);
+  const trs = [...db.trainees].sort(byName);
   openSheet(`<h2>${t('group.edit')}</h2><form data-f="saveGroup" data-id="${id}">
     <label class="f">${t('name')}<input type="text" name="name" value="${esc(g.name)}" required autocomplete="off"></label>
     <div class="muted">${t('group.members')}</div>
@@ -93,7 +92,7 @@ F.saveGroup = (fd, d) => {
   g.name = name; g.traineeIds = fd.getAll('m'); save(); closeSheet(); render();
 };
 A.quickTrainee = ({ id }) => promptBox(t('trainee.new'), t('name'), '', name => {
-  const tr = { id: uid(), name, note: '', active: true };
+  const tr = { id: uid(), name, note: '' };
   db.trainees.push(tr); getGroup(id).traineeIds.push(tr.id); save(); render();
   A.editGroup({ id });
 });
