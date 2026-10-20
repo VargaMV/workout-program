@@ -1062,10 +1062,10 @@ function cellHtml(tid, key) {
   const { e, s, streak } = L;
   const pl = planned(tid, key);
   const hot = streak.n >= db.settings.threshold;
-  const info = [esc(extraText(e)), fmtDate(s.date)].filter(Boolean).join(' · ');
+  const info = [esc(extraText(e, true)), fmtDate(s.date)].filter(Boolean).join(' · ');
   return `<td class="${hot ? 'hot' : ''}">${streak.n > 1 ? `<span class="badge corner ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">${streakLabel(streak)}</span>` : ''}<div class="st ${streak.n > 1 ? 'pad' : ''}">${esc(entryLabel(e))}</div>
     <small>${info}</small>
-    ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${extraText(pl) ? ' · ' + esc(extraText(pl)) : ''}</div>` : ''}</td>`;
+    ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${extraText(pl, true) ? ' · ' + esc(extraText(pl, true)) : ''}</div>` : ''}</td>`;
 }
 
 function matrixTab(g) {
