@@ -155,13 +155,14 @@ table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
 .matrix .stick { position: sticky; left: 0; z-index: 1; min-width: 78px; max-width: 120px; background: var(--surface2); font-weight: 600; font-size: .9rem; }
 .matrix thead .stick { z-index: 3; }
 .matrix tr:last-child > * { border-bottom: 0; }
-.matrix td .st { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; font-weight: 600; line-height: 1.2; }
-.matrix td .st .badge { flex: none; margin-top: 1px; }
+.matrix td { position: relative; }
+.matrix td .st { font-weight: 600; line-height: 1.2; }
+.matrix td .st.pad { padding-right: 20px; }
+.badge.corner { position: absolute; top: 0; right: 0; border-radius: 0 0 0 4px; font-size: .64rem; padding: 0 5px; line-height: 1.35; }
 .matrix td small, .matrix th small { display: block; color: var(--ink2); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: .7rem; line-height: 1.25; }
 .matrix td.hot { background: var(--warn-soft); }
 .matrix td.empty { color: var(--ink2); text-align: center; }
 .matrix td .next { color: var(--accent); font-weight: 600; font-size: .72rem; margin-top: 1px; line-height: 1.2; }
-.matrix td { min-width: 100px; }
 .warn-note { color: var(--warn) !important; }
 .matrix th a:hover { text-decoration: underline; }
 
@@ -351,6 +352,27 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   input, select, textarea { font-size: 16px !important; }
 }
 
+/* ---------- planner ---------- */
+.plan-list { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.plan-row { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-bottom: 1px solid var(--line); }
+.plan-row:last-child { border-bottom: 0; }
+.plan-row.on { background: var(--accent-soft); }
+.plan-name { flex: 1; min-width: 0; min-height: 40px; display: flex; align-items: center; gap: 8px; text-align: left; background: none; border: 0; cursor: pointer; font-weight: 600; padding: 0; }
+.plan-name .pn-n { width: 20px; height: 20px; border-radius: 4px; background: var(--accent); color: var(--accent-ink); font-size: .75rem; display: inline-flex; align-items: center; justify-content: center; flex: none; visibility: hidden; }
+.plan-row.on .pn-n { visibility: visible; }
+.plan-row .seg button { min-height: 32px; min-width: 28px; padding: 0 6px; }
+.plan-sum { font-size: .9rem; }
+.plan-sum > div + div { margin-top: 2px; }
+.plan-bar {
+  position: sticky; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); z-index: 5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--surface); border-top: 1px solid var(--line); padding: 6px 8px; margin-top: 8px;
+}
+.plan-bar .muted { flex: 1; min-width: 90px; }
+.chips .tag { margin: 0; font-size: .75rem; padding: 1px 8px; }
+@media (min-width: 900px) { .plan-bar { bottom: 0; } }
+@media (max-width: 559px) { .plan-bar .btn.primary { flex: 1 1 100%; }
+  .plan-bar { margin-left: 0; margin-right: 0; padding-left: 8px; padding-right: 8px; } }
+
 </style>
 </head>
 <body>
@@ -410,15 +432,30 @@ const S = {
   'n.sessions': ['{n} edzésen volt', '{n} sessions attended'], 'n.steps': ['{n} lépés', '{n} steps'],
   'last.session': ['utolsó edzés: {d}', 'last session: {d}'],
   'tab.matrix': ['Áttekintés', 'Overview'], 'tab.sessions': ['Edzések', 'Sessions'], 'tab.template': ['Sablon', 'Template'],
+  'tab.templates': ['Sablonok', 'Templates'],
   'tab.trainees': ['Tanulók', 'Trainees'], 'tab.groups': ['Csoportok', 'Groups'], 'tab.exercises': ['Gyakorlatok', 'Exercises'],
   'matrix.nomembers': ['A csoportban még nincs tanuló.', 'This group has no trainees yet.'],
-  'matrix.nocols': ['Még nincs gyakorlat. Állítsd be a sablont, vagy indíts egy edzést.', 'No exercises yet. Set up the template or start a session.'],
+  'matrix.nocols': ['Még nincs gyakorlat. Válassz sablont a Sablon fülön, vagy indíts egy edzést.', 'No exercises yet. Pick a template on the Template tab or start a session.'],
   'matrix.all': ['Minden gyakorlat mutatása', 'Show all exercises'],
   'matrix.legend': ['×N = ennyi edzésen át ugyanazon a lépcsőfokon. "pontos ×M" = ennyi edzésen át ugyanazzal az ismétléssel/megjegyzéssel is. → = a következő tervezett edzés.', '×N = sessions in a row on the same step. "exact ×M" = sessions with the same reps/note too. → = next planned session.'],
   'streak.tip': ['Egymás utáni edzések ugyanazon a lépcsőfokon', 'Consecutive sessions on the same step'],
   'exact': ['pontos ×{n}', 'exact ×{n}'], 'exact.tip': ['Ugyanaz a lépcsőfok és ugyanaz az ismétlés/megjegyzés', 'Same step and same reps/note'],
   'sessions.empty': ['Még nincs edzés.', 'No sessions yet.'], 'planned': ['tervezett', 'planned'],
-  'template.help': ['A csoport szokásos edzése. Új edzésnél ez másolódik be, ott szabadon módosítható. Kb. 8 hetente érdemes átírni.', "The group's usual workout. New sessions start as a copy and can be changed freely. Update it every ~8 weeks."],
+  'tpl.current': ['A csoport sablonja', "The group's template"], 'tpl.none': ['– nincs –', '– none –'],
+  'tpl.new': ['Új sablon', 'New template'], 'tpl.edit': ['Sablon szerkesztése', 'Edit template'], 'tpl.copy': ['Új időszak (másolat)', 'New period (copy)'],
+  'tpl.copied': ['Másolat létrehozva és beállítva', 'Copy created and selected'], 'tpl.exercises': ['Gyakorlatok', 'Exercises'], 'tpl.add': ['Gyakorlatok hozzáadása', 'Add exercises'],
+  'tpl.empty': ['Még nincs gyakorlat a sablonban.', 'No exercises in this template yet.'], 'tpl.delete': ['Sablon törlése', 'Delete template'],
+  'tpl.delq': ['A sablon törlődik, a csoportok sablon nélkül maradnak. Az edzések nem változnak.', 'The template is deleted and its groups end up without one. Sessions are not affected.'],
+  'tpl.used': ['Használja: {g}', 'Used by: {g}'], 'tpl.unused': ['Egyik csoport sem használja.', 'Not used by any group.'],
+  'tpl.help': ['A sablon az időszak gyakorlatainak listája (csoportosítás nélkül), több csoport is használhatja. Új edzésnél ebből választod ki a mai gyakorlatokat. Kb. 8 hetente érdemes újat választani vagy másolatot készíteni.', "A template is the list of exercises for a training period (no grouping); several groups can share it. When you plan a workout you pick today's exercises from it. Switch or copy it about every 8 weeks."],
+  'n.exercises': ['{n} gyakorlat', '{n} exercises'],
+  'plan.title': ['Új edzés', 'New session'], 'plan.last': ['Mint legutóbb', 'Like last time'], 'plan.split': ['3-asával', 'Split by 3'], 'plan.clear': ['Törlés', 'Clear'],
+  'plan.help': ['Koppints a gyakorlat nevére: a következő szabad blokkba kerül (blokkonként 3). A gombokkal tetszőleges blokkot választhatsz, a – kiveszi.', 'Tap an exercise name to put it in the next block with room (3 per block). Use the buttons to pick any block; – removes it.'],
+  'plan.add': ['További gyakorlat', 'More exercises'], 'plan.extra': ['extra', 'extra'], 'plan.block': ['{n}. blokk:', 'Block {n}:'],
+  'plan.sum': ['{b} blokk · {n} gyakorlat', '{b} blocks · {n} exercises'], 'plan.interval': ['Intervallum blokk', 'Interval block'], 'plan.create': ['Edzés létrehozása', 'Create session'],
+  'plan.none': ['Jelölj ki legalább egy gyakorlatot.', 'Select at least one exercise.'], 'plan.nolast': ['Még nincs korábbi edzés.', 'No earlier session yet.'],
+  'plan.emptypool': ['A sablon üres. Adj hozzá gyakorlatokat lent, vagy a Sablonok között.', 'The template is empty. Add exercises below or under Templates.'],
+  'plan.notpl': ['A csoportnak nincs sablonja. Adj hozzá gyakorlatokat lent, vagy válassz sablont a csoport Sablon fülén.', "This group has no template. Add exercises below or pick one on the group's Template tab."],
   'session.new': ['Új edzés', 'New session'], 'session.delete': ['Edzés törlése', 'Delete session'],
   'session.delq': ['Az edzés és a hozzá tartozó bejegyzések törlődnek.', 'The session and its entries will be deleted.'],
   'session.noatt': ['Nincs résztvevő kijelölve.', 'No attendees selected.'],
@@ -430,7 +467,7 @@ const S = {
   'rounds': ['Kör', 'Rounds'], 'item.add': ['Gyakorlat', 'Exercise'], 'brief.open': ['Ismertetés', 'Briefing'],
   'freetext': ['szabad szöveg', 'free text'], 'exercise': ['Gyakorlat', 'Exercise'],
   'iv.sum': ['<b>{w}</b> mp munka · <b>{r}</b> mp pihenő · <b>{z}</b> mp körpihenő · {n} kör', '<b>{w}</b>s work · <b>{r}</b>s rest · <b>{z}</b>s round rest · {n} rounds'],
-  'pick.ph': ['Keresés, vagy új név (vesszővel több is)…', 'Search, or type new names (comma-separated)…'], 'pick.none': ['Nincs találat.', 'No matches.'],
+  'pick.ph2': ['Keresés vagy új név…', 'Search or type a new name…'], 'pick.ph': ['Keresés, vagy új név (vesszővel több is)…', 'Search, or type new names (comma-separated)…'], 'pick.none': ['Nincs találat.', 'No matches.'],
   'pick.text': ['Egyszeri, szabad szöveg: "{q}"', 'One-off free text: "{q}"'], 'pick.new': ['Új gyakorlat a könyvtárba: "{q}"', 'New library exercise: "{q}"'],
   'pick.add': ['Hozzáadás ({n})', 'Add ({n})'], 'pick.exists': ['már benne van', 'already in'],
   'pick.dup': ['Ez a gyakorlat már szerepel az edzésben.', 'This exercise is already in the workout.'],
@@ -492,16 +529,24 @@ const DEFAULTS = () => ({
     timer: { rounds: 3, n: 3, work: 40, rest: 20, roundRest: 60, prep: 5, names: '' },
     metro: { sec: 1, accent: 0 },
   },
-  trainees: [], groups: [], exercises: [], sessions: [], entries: [],
+  trainees: [], groups: [], exercises: [], templates: [], sessions: [], entries: [],
 });
 
 function normalizeDb(raw) {
   const d = DEFAULTS();
   if (!raw || typeof raw !== 'object') return d;
-  for (const k of ['trainees', 'groups', 'exercises', 'sessions', 'entries']) if (Array.isArray(raw[k])) d[k] = raw[k];
+  for (const k of ['trainees', 'groups', 'exercises', 'templates', 'sessions', 'entries']) if (Array.isArray(raw[k])) d[k] = raw[k];
   const s = raw.settings;
   if (s && typeof s === 'object') {
     d.settings = { ...d.settings, ...s, timer: { ...d.settings.timer, ...(s.timer || {}) }, metro: { ...d.settings.metro, ...(s.metro || {}) } };
+  }
+  // Older data kept the usual workout as blocks inside the group: turn it into a named template.
+  for (const g of d.groups) {
+    if (!Array.isArray(g.template)) continue;
+    const ids = [];
+    for (const b of g.template) if (b.type === 'strength') for (const it of b.items) if (it.exId && !ids.includes(it.exId)) ids.push(it.exId);
+    if (ids.length && !g.templateId) { const tp = { id: uid(), name: g.name, exIds: ids }; d.templates.push(tp); g.templateId = tp.id; }
+    delete g.template;
   }
   return d;
 }
@@ -525,6 +570,7 @@ function ix() {
       ex: new Map(db.exercises.map(x => [x.id, x])),
       tr: new Map(db.trainees.map(x => [x.id, x])),
       gr: new Map(db.groups.map(x => [x.id, x])),
+      tp: new Map(db.templates.map(x => [x.id, x])),
     };
   }
   return _ix;
@@ -533,6 +579,7 @@ const getSession = id => ix().sess.get(id);
 const getExercise = id => ix().ex.get(id);
 const getTrainee = id => ix().tr.get(id);
 const getGroup = id => ix().gr.get(id);
+const getTemplate = id => (id ? ix().tp.get(id) : undefined);
 
 function deleteSessionData(ids) {
   const set = new Set(ids);
@@ -662,7 +709,8 @@ const activeMembers = g => g.traineeIds.map(getTrainee).filter(x => x && x.activ
 
 function groupColumns(g) {
   const main = new Map();
-  for (const b of g.template || []) if (b.type === 'strength') for (const it of b.items) { const k = ek(it); if (!main.has(k)) main.set(k, { key: k }); }
+  const tp = getTemplate(g.templateId);
+  if (tp) for (const id of tp.exIds) if (getExercise(id)) main.set(id, { key: id });
   const members = new Set(g.traineeIds), extra = new Map();
   for (const e of db.entries) if (members.has(e.traineeId) && !main.has(e.ek) && isSet(e)) extra.set(e.ek, { key: e.ek });
   return { main: [...main.values()], extra: [...extra.values()].sort((a, b) => exName(a.key).localeCompare(exName(b.key), locale())) };
@@ -817,7 +865,7 @@ function parseRoute() {
   const seg = h.split('/').filter(Boolean).map(decodeURIComponent);
   return { name: seg[0] || 'home', p: seg.slice(1) };
 }
-const NAV_OF = { home: 'home', group: 'home', session: 'home', brief: 'home', trainee: 'home', exsum: 'home', manage: 'manage', exercise: 'manage', timer: 'timer', metronome: 'metro', settings: 'settings' };
+const NAV_OF = { home: 'home', group: 'home', session: 'home', brief: 'home', trainee: 'home', exsum: 'home', manage: 'manage', exercise: 'manage', plan: 'home', template: 'manage', timer: 'timer', metronome: 'metro', settings: 'settings' };
 function navHtml(active) {
   const items = [['home', '/', 'users', 'nav.groups'], ['manage', '/manage', 'list', 'nav.manage'], ['timer', '/timer', 'timer', 'nav.timer'], ['metro', '/metronome', 'metro', 'nav.metro'], ['settings', '/settings', 'sliders', 'nav.settings']];
   return `<div class="brand">${t('app.name')}</div>` + items.map(([id, href, ic, k]) => `<a href="#${href}" class="${id === active ? 'on' : ''}">${icon(ic)}<span>${t(k)}</span></a>`).join('');
@@ -934,7 +982,7 @@ V.home = () => {
 };
 
 A.newGroup = () => promptBox(t('group.new'), t('name'), '', name => {
-  const g = { id: uid(), name, traineeIds: [], template: [] };
+  const g = { id: uid(), name, traineeIds: [] };
   db.groups.push(g); save(); navigate('/group/' + g.id + '/matrix');
 });
 
@@ -955,7 +1003,7 @@ function cellHtml(tid, key) {
   const pl = planned(tid, key);
   const hot = streak.n >= db.settings.threshold;
   const info = [e.reps ? esc(e.reps) : '', fmtDate(s.date), streak.n > 1 && streak.exact < streak.n ? t('exact', { n: streak.exact }) : ''].filter(Boolean).join(' · ');
-  return `<td class="${hot ? 'hot' : ''}"><div class="st"><span>${esc(entryLabel(e))}</span>${streak.n > 1 ? `<span class="badge ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${streak.n}</span>` : ''}</div>
+  return `<td class="${hot ? 'hot' : ''}">${streak.n > 1 ? `<span class="badge corner ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${streak.n}</span>` : ''}<div class="st ${streak.n > 1 ? 'pad' : ''}">${esc(entryLabel(e))}</div>
     <small>${info}</small>
     ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${pl.reps ? ' · ' + esc(pl.reps) : ''}</div>` : ''}</td>`;
 }
@@ -982,17 +1030,27 @@ function sessionsTab(g) {
 }
 
 function templateTab(g) {
-  g.template = g.template || [];
-  return `<p class="muted">${t('template.help')}</p>${blocksHtml('t:' + g.id)}`;
+  const tp = getTemplate(g.templateId);
+  const opts = [...db.templates].sort(byName).map(x => `<option value="${x.id}" ${x.id === g.templateId ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+  return `<div class="card"><label class="f">${t('tpl.current')}<select data-c="grpTpl" data-g="${g.id}"><option value="">${t('tpl.none')}</option>${opts}</select></label>
+    ${tp ? `<div class="chips">${tp.exIds.filter(getExercise).map(x => `<span class="tag">${esc(exName(x))}</span>`).join('')}</div>` : ''}
+    <div class="row">${tp ? `<a class="btn small" href="#/template/${tp.id}">${t('tpl.edit')}</a><button class="btn small" data-a="tplCopy" data-g="${g.id}">${t('tpl.copy')}</button>` : ''}<button class="btn small" data-a="tplNewFor" data-g="${g.id}">${t('tpl.new')}</button></div></div>
+    <p class="muted">${t('tpl.help')}</p>`;
 }
-
-A.newSession = ({ g }) => {
-  const grp = getGroup(g);
-  const s = { id: uid(), groupId: g, date: todayStr(), created: Date.now(), attendeeIds: activeMembers(grp).map(x => x.id), blocks: cloneBlocks(grp.template || []), note: '' };
-  db.sessions.push(s);
-  syncEntries(s); save();
-  navigate('/session/' + s.id);
+C.grpTpl = (v, d) => { const g = getGroup(d.g); if (v) g.templateId = v; else delete g.templateId; save(); render(); };
+A.tplCopy = ({ g }) => {
+  const grp = getGroup(g), tp = getTemplate(grp.templateId);
+  promptBox(t('tpl.copy'), t('name'), tp.name, name => {
+    const n = { id: uid(), name, exIds: [...tp.exIds] };
+    db.templates.push(n); grp.templateId = n.id; save(); render(); toast(t('tpl.copied'));
+  });
 };
+A.tplNewFor = ({ g }) => promptBox(t('tpl.new'), t('name'), '', name => {
+  const n = { id: uid(), name, exIds: [] };
+  db.templates.push(n); getGroup(g).templateId = n.id; save(); navigate('/template/' + n.id);
+});
+
+A.newSession = ({ g }) => navigate('/plan/' + g);
 
 V.exsum = ([gid, key]) => {
   const g = getGroup(gid);
@@ -1014,14 +1072,8 @@ function personHtml(it) {
 // Block editor (shared by sessions and group templates), session page, block briefing.
 function getCtx(cs) {
   const [k, id] = cs.split(':');
-  if (k === 's') {
-    const s = getSession(id);
-    return s && { kind: 's', s, blocks: s.blocks, after: () => { syncEntries(s); save(); render(); } };
-  }
-  const g = getGroup(id);
-  if (!g) return null;
-  g.template = g.template || [];
-  return { kind: 't', g, blocks: g.template, after: () => { save(); render(); } };
+  const sess = k === 's' && getSession(id);
+  return sess ? { kind: 's', s: sess, blocks: sess.blocks, after: () => { syncEntries(sess); save(); render(); } } : null;
 }
 const findBlock = (c, id) => c.blocks.find(b => b.id === id);
 const dctx = (cs, b) => `data-ctx="${cs}" data-b="${b.id}"`;
@@ -1107,26 +1159,43 @@ F.saveInterval = (fd, d) => {
   closeSheet(); c.after();
 };
 
-// ----- exercise picker (multi-select) -----
+// ----- exercise picker (multi-select), shared by blocks, templates and the planner -----
+// conf: { title, allowText, allowNew, kinds: 'strength'|'all', have: () => Set of ids already present, add: (ids, texts) => void }
 const existingKeys = c => new Set(c.blocks.filter(x => x.type === 'strength').flatMap(x => x.items.map(ek)));
-A.addItem = d => {
-  ui.pick = { ctx: d.ctx, b: d.b, sel: [], texts: [] };
-  openSheet(`<h2>${t('item.add')}</h2><input type="text" id="pickQ" data-i="pickSearch" placeholder="${t('pick.ph')}" autocomplete="off">
+function openPicker(conf) {
+  ui.pick = { conf, sel: [], texts: [] };
+  openSheet(`<h2>${esc(conf.title)}</h2><input type="text" id="pickQ" data-i="pickSearch" placeholder="${conf.allowText ? t('pick.ph') : t('pick.ph2')}" autocomplete="off">
     <div id="pickRes" class="pick-res">${pickResults('')}</div><div id="pickSel" class="pick-sel"></div>
     <div class="row end"><button class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary" id="pickAdd" data-a="pickAdd" disabled>${t('pick.add', { n: 0 })}</button></div>`);
+}
+A.addItem = d => {
+  const b = findBlock(getCtx(d.ctx), d.b);
+  openPicker({
+    title: t('item.add'), allowText: true, allowNew: b.type === 'strength', kinds: b.type === 'interval' ? 'all' : 'strength',
+    have: () => (b.type === 'strength' ? existingKeys(getCtx(d.ctx)) : new Set()),
+    add: (ids, texts) => {
+      const c = getCtx(d.ctx), blk = findBlock(c, d.b), have = existingKeys(c);
+      let dup = 0;
+      for (const it of [...ids.map(id => ({ exId: id, name: getExercise(id).name })), ...texts.map(name => ({ name }))]) {
+        const k = ek(it);
+        if (blk.type === 'strength') { if (have.has(k)) { dup++; continue; } have.add(k); }
+        blk.items.push({ id: uid(), ...it });
+      }
+      c.after();
+      if (dup) toast(t('pick.dup'));
+    },
+  });
 };
 function pickResults(q) {
-  const c = getCtx(ui.pick.ctx), b = findBlock(c, ui.pick.b), nq = norm(q), have = b.type === 'strength' ? existingKeys(c) : new Set();
-  const list = db.exercises.filter(x => (b.type === 'interval' || x.kind === 'strength') && (!nq || norm(x.name).includes(nq))).sort(byName);
+  const conf = ui.pick.conf, nq = norm(q), have = conf.have();
+  const list = db.exercises.filter(x => (conf.kinds === 'all' || x.kind === 'strength') && (!nq || norm(x.name).includes(nq))).sort(byName);
   let out = list.map(x => {
     const off = have.has(x.id);
     return `<label class="check ${off ? 'off' : ''}"><input type="checkbox" data-c="pickToggle" data-id="${x.id}" ${off ? 'disabled' : ''} ${ui.pick.sel.includes(x.id) ? 'checked' : ''}> ${esc(x.name)}${off ? `<span class="tag">${t('pick.exists')}</span>` : ''}</label>`;
   }).join('');
-  if (nq) {
-    if (!db.exercises.some(x => norm(x.name) === nq)) {
-      out += `<button class="pick-add" data-a="pickText">${icon('plus')} ${t('pick.text', { q: esc(q.trim()) })}</button>`;
-      if (b.type === 'strength') out += `<button class="pick-add" data-a="pickNew">${icon('plus')} ${t('pick.new', { q: esc(q.trim()) })}</button>`;
-    }
+  if (nq && !db.exercises.some(x => norm(x.name) === nq)) {
+    if (conf.allowText) out += `<button class="pick-add" data-a="pickText">${icon('plus')} ${t('pick.text', { q: esc(q.trim()) })}</button>`;
+    if (conf.allowNew) out += `<button class="pick-add" data-a="pickNew">${icon('plus')} ${t('pick.new', { q: esc(q.trim()) })}</button>`;
   }
   return out || `<p class="muted" style="padding:8px 10px;margin:0">${t('pick.none')}</p>`;
 }
@@ -1158,19 +1227,7 @@ A.pickNew = () => {
   q.value = ''; $('#pickRes').innerHTML = pickResults(''); pickRefresh();
   toast(t('pick.created'));
 };
-A.pickAdd = () => {
-  const p = ui.pick, c = getCtx(p.ctx), b = findBlock(c, p.b);
-  let dup = 0;
-  const items = [...p.sel.map(id => ({ exId: id, name: getExercise(id).name })), ...p.texts.map(name => ({ name }))];
-  const have = existingKeys(c);
-  for (const it of items) {
-    const k = ek(it);
-    if (b.type === 'strength') { if (have.has(k)) { dup++; continue; } have.add(k); }
-    b.items.push({ id: uid(), ...it });
-  }
-  closeSheet(); c.after();
-  if (dup) toast(t('pick.dup'));
-};
+A.pickAdd = () => { const { conf, sel, texts } = ui.pick; closeSheet(); conf.add(sel, texts); };
 
 // ----- session page -----
 V.session = ([id]) => {
@@ -1272,6 +1329,129 @@ V.brief = ([sid, bid]) => {
   return { html: header(`${bi + 1}. ${t('block.strength')}`, { back: '/session/' + s.id, sub: fmtLong(s.date) }) + `<div class="page">${items || `<p class="muted">${t('block.empty')}</p>`}<div class="step-nav">${link(bi - 1)}${link(bi + 1)}</div></div>` };
 };
 
+/* 07b-view-plan.js */
+// Workout planner: pick today's exercises from the group's template and split them into blocks with one tap each.
+const lastDoneSession = gid => {
+  const ss = db.sessions.filter(s => s.groupId === gid).sort(sessionCmp);
+  return [...ss].reverse().find(s => s.date <= todayStr()) || ss[ss.length - 1];
+};
+const lastIntervalBlock = gid => {
+  for (const s of db.sessions.filter(x => x.groupId === gid).sort(sessionCmp).reverse()) {
+    const b = s.blocks.find(x => x.type === 'interval');
+    if (b) return b;
+  }
+  return null;
+};
+const planPool = () => {
+  const tp = getTemplate((getGroup(ui.plan.gid) || {}).templateId);
+  const base = tp ? tp.exIds : [];
+  return [...base, ...ui.plan.extra.filter(x => !base.includes(x))].filter(getExercise);
+};
+// First block (1, 2, 3, ...) that still has room for another exercise (3 per block).
+function planAutoGroup() {
+  const cnt = {};
+  for (const v of Object.values(ui.plan.assign)) if (v) cnt[v] = (cnt[v] || 0) + 1;
+  let n = 1;
+  while ((cnt[n] || 0) >= 3) n++;
+  return n;
+}
+function planPut(id, n) {
+  const P = ui.plan;
+  P.assign[id] = n;
+  if (!n) P.order = P.order.filter(x => x !== id);
+  else if (!P.order.includes(id)) P.order.push(id);
+}
+
+V.plan = ([gid]) => {
+  const g = getGroup(gid);
+  if (!g) return notFound();
+  if (!ui.plan || ui.plan.gid !== gid) {
+    ui.plan = { gid, date: todayStr(), assign: {}, order: [], extra: [], rounds: {}, interval: !!lastIntervalBlock(gid) };
+    onLeave(() => { ui.plan = null; });
+  }
+  const P = ui.plan, tp = getTemplate(g.templateId), pool = planPool();
+  const used = Object.values(P.assign).filter(Boolean);
+  const maxG = Math.min(6, Math.max(3, (used.length ? Math.max(...used) : 0) + 1));
+  const rows = pool.map(id => {
+    const n = P.assign[id] || 0;
+    const extra = !(tp && tp.exIds.includes(id));
+    return `<div class="plan-row ${n ? 'on' : ''}"><button class="plan-name" data-a="planTap" data-id="${id}"><span class="pn-n">${n || ''}</span><span>${esc(exName(id))}${extra ? `<span class="tag">${t('plan.extra')}</span>` : ''}</span></button>
+      <div class="seg">${Array.from({ length: maxG + 1 }, (_, k) => `<button class="${n === k ? 'on' : ''}" data-a="planSet" data-id="${id}" data-n="${k}">${k || '–'}</button>`).join('')}</div></div>`;
+  }).join('');
+  const nums = [...new Set(used)].sort((a, b) => a - b);
+  const summary = nums.map((n, i) => `<div><b>${t('plan.block', { n: i + 1 })}</b> ${P.order.filter(x => P.assign[x] === n).map(x => esc(exName(x))).join(', ')}</div>`).join('');
+  const body = `<div class="card"><label class="f">${t('date')}<input type="date" value="${P.date}" data-c="planDate"></label>
+      <div class="join"><button class="btn" data-a="planLast">${t('plan.last')}</button><button class="btn" data-a="planSplit">${t('plan.split')}</button><button class="btn" data-a="planClear">${t('plan.clear')}</button></div>
+      <p class="muted" style="margin:0">${t('plan.help')}</p></div>
+    ${pool.length ? `<div class="plan-list">${rows}</div>` : `<p class="muted">${tp ? t('plan.emptypool') : t('plan.notpl')}</p>`}
+    <button class="btn full" data-a="planAdd">${icon('plus')} ${t('plan.add')}</button>
+    ${summary ? `<div class="card plan-sum">${summary}</div>` : ''}
+    <div class="plan-bar"><span class="muted">${t('plan.sum', { b: nums.length, n: used.length })}</span>
+      <label class="check"><input type="checkbox" data-c="planInterval" ${P.interval ? 'checked' : ''}> ${t('plan.interval')}</label>
+      <button class="btn primary" data-a="planCreate">${t('plan.create')}</button></div>`;
+  return { html: header(t('plan.title'), { back: `/group/${gid}/sessions`, sub: g.name }) + `<div class="page">${body}</div>` };
+};
+
+A.planTap = ({ id }) => { planPut(id, ui.plan.assign[id] ? 0 : planAutoGroup()); render(); };
+A.planSet = ({ id, n }) => { planPut(id, +n); render(); };
+A.planClear = () => { ui.plan.assign = {}; ui.plan.order = []; render(); };
+// Spread the chosen exercises evenly over blocks of about 3 (8 -> 3+3+2, 9 -> 3+3+3).
+A.planSplit = () => {
+  const P = ui.plan, list = P.order.filter(x => P.assign[x]), n = list.length;
+  if (!n) { toast(t('plan.none')); return; }
+  const gn = Math.ceil(n / 3), base = Math.floor(n / gn), rem = n % gn;
+  let i = 0;
+  for (let gi = 0; gi < gn; gi++) for (let k = 0; k < base + (gi < rem ? 1 : 0); k++) P.assign[list[i++]] = gi + 1;
+  render();
+};
+A.planLast = () => {
+  const P = ui.plan, s = lastDoneSession(P.gid);
+  if (!s) { toast(t('plan.nolast')); return; }
+  P.assign = {}; P.order = []; P.rounds = {};
+  let bi = 0;
+  for (const b of s.blocks.filter(x => x.type === 'strength')) {
+    bi++;
+    for (const it of b.items) {
+      if (!it.exId || !getExercise(it.exId)) continue;
+      if (!planPool().includes(it.exId)) P.extra.push(it.exId);
+      planPut(it.exId, bi);
+    }
+    P.rounds[bi] = b.rounds;
+  }
+  P.interval = s.blocks.some(x => x.type === 'interval') || !!lastIntervalBlock(P.gid);
+  render();
+};
+A.planAdd = () => openPicker({
+  title: t('plan.add'), allowText: false, allowNew: true, kinds: 'strength',
+  have: () => new Set(planPool()),
+  add: ids => {
+    for (const id of ids) {
+      if (!planPool().includes(id)) ui.plan.extra.push(id);
+      if (!ui.plan.assign[id]) planPut(id, planAutoGroup());
+    }
+    render();
+  },
+});
+C.planDate = v => { ui.plan.date = v || todayStr(); };
+C.planInterval = v => { ui.plan.interval = v; };
+A.planCreate = () => {
+  const P = ui.plan, nums = [...new Set(Object.values(P.assign).filter(Boolean))].sort((a, b) => a - b);
+  if (!nums.length) { toast(t('plan.none')); return; }
+  const blocks = nums.map(n => ({
+    id: uid(), type: 'strength', rounds: P.rounds[n] || 3,
+    items: P.order.filter(x => P.assign[x] === n).map(x => ({ id: uid(), exId: x, name: exName(x) })),
+  }));
+  if (P.interval) {
+    const ib = lastIntervalBlock(P.gid);
+    blocks.push(ib ? { ...ib, id: uid(), items: ib.items.map(i => ({ ...i, id: uid() })) } : { id: uid(), type: 'interval', rounds: 3, work: 40, rest: 20, roundRest: 60, items: [] });
+  }
+  const grp = getGroup(P.gid);
+  const s = { id: uid(), groupId: grp.id, date: P.date, created: Date.now(), attendeeIds: activeMembers(grp).map(x => x.id), blocks, note: '' };
+  db.sessions.push(s);
+  syncEntries(s); save();
+  navigate('/session/' + s.id);
+};
+
 /* 08-view-people.js */
 // Trainee profile, manage (trainees / groups / exercises), exercise editor.
 V.trainee = ([id]) => {
@@ -1303,12 +1483,15 @@ V.trainee = ([id]) => {
 
 // ---------- manage ----------
 V.manage = ([tab = 'trainees']) => {
-  const tabs = ['trainees', 'groups', 'exercises'];
+  const tabs = ['trainees', 'groups', 'templates', 'exercises'];
   const nav = `<nav class="tabs">${tabs.map(x => `<a class="${x === tab ? 'on' : ''}" href="#/manage/${x}">${t('tab.' + x)}</a>`).join('')}</nav>`;
   let body;
   if (tab === 'groups') {
     body = `<div class="card list">${[...db.groups].sort(byName).map(g => `<button class="list-row" data-a="editGroup" data-id="${g.id}"><span class="grow"><b>${esc(g.name)}</b><div class="muted">${t('n.members', { n: activeMembers(g).length })}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
       <button class="btn primary full" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
+  } else if (tab === 'templates') {
+    body = `<div class="card list">${[...db.templates].sort(byName).map(x => `<a class="list-row" href="#/template/${x.id}"><span class="grow"><b>${esc(x.name)}</b><div class="muted">${t('n.exercises', { n: x.exIds.length })}${db.groups.some(g => g.templateId === x.id) ? ' · ' + esc(db.groups.filter(g => g.templateId === x.id).map(g => g.name).join(', ')) : ''}</div></span>${icon('edit')}</a>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
+      <p class="muted">${t('tpl.help')}</p><button class="btn primary full" data-a="newTemplate">${icon('plus')} ${t('tpl.new')}</button>`;
   } else if (tab === 'exercises') {
     body = `<input type="search" data-i="exSearch" placeholder="${t('search')}" style="margin-bottom:12px"><div class="card list" id="exList">${exList('')}</div>
       <button class="btn primary full" data-a="newExercise">${icon('plus')} ${t('ex.new')}</button>`;
@@ -1412,7 +1595,44 @@ F.addSteps = (fd, d) => {
   String(fd.get('labels') || '').split('\n').map(x => x.trim()).filter(Boolean).forEach(label => getExercise(d.id).steps.push({ id: uid(), label }));
   save(); render();
 };
-A.delExercise = ({ id }) => confirmBox(t('ex.delq'), t('delete'), () => { db.exercises = db.exercises.filter(x => x.id !== id); save(); navigate('/manage/exercises'); });
+A.delExercise = ({ id }) => confirmBox(t('ex.delq'), t('delete'), () => { db.exercises = db.exercises.filter(x => x.id !== id); db.templates.forEach(tp => { tp.exIds = tp.exIds.filter(x => x !== id); }); save(); navigate('/manage/exercises'); });
+
+// ---------- templates (named exercise sets for a training period) ----------
+A.newTemplate = () => promptBox(t('tpl.new'), t('name'), '', name => {
+  const tp = { id: uid(), name, exIds: [] };
+  db.templates.push(tp); save(); navigate('/template/' + tp.id);
+});
+V.template = ([id]) => {
+  const tp = getTemplate(id);
+  if (!tp) return notFound();
+  const users = db.groups.filter(g => g.templateId === id);
+  const rows = tp.exIds.filter(getExercise).map((x, i, arr) => {
+    const d = `data-id="${id}" data-x="${x}"`;
+    return `<div class="iv-item"><a href="#/exercise/${x}">${i + 1}. ${esc(exName(x))}</a><span class="item-a">
+      <button class="icon-btn sm" data-a="tplMove" ${d} data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="${t('up')}">${icon('up')}</button>
+      <button class="icon-btn sm" data-a="tplMove" ${d} data-dir="1" ${i === arr.length - 1 ? 'disabled' : ''} aria-label="${t('down')}">${icon('down')}</button>
+      <button class="icon-btn sm" data-a="tplDel" ${d} aria-label="${t('delete')}">${icon('x')}</button></span></div>`;
+  }).join('');
+  const body = `<div class="card"><label class="f">${t('name')}<input type="text" value="${esc(tp.name)}" data-c="tplName" data-id="${id}"></label>
+      <div class="muted">${users.length ? t('tpl.used', { g: esc(users.map(g => g.name).join(', ')) }) : t('tpl.unused')}</div></div>
+    <div class="card"><h2>${t('tpl.exercises')} (${tp.exIds.filter(getExercise).length})</h2>${rows || `<p class="muted">${t('tpl.empty')}</p>`}</div>
+    <button class="btn primary full" data-a="tplAdd" data-id="${id}">${icon('plus')} ${t('tpl.add')}</button>
+    <div class="row end"><button class="btn ghost-danger" data-a="delTemplate" data-id="${id}">${icon('trash')} ${t('tpl.delete')}</button></div>`;
+  return { html: header(tp.name, { back: '/manage/templates' }) + `<div class="page">${body}</div>` };
+};
+C.tplName = (v, d) => { if (v.trim()) { getTemplate(d.id).name = v.trim(); save(); } render(); };
+A.tplMove = d => { const tp = getTemplate(d.id); move(tp.exIds, tp.exIds.indexOf(d.x), +d.dir); save(); render(); };
+A.tplDel = d => { const tp = getTemplate(d.id); tp.exIds = tp.exIds.filter(x => x !== d.x); save(); render(); };
+A.tplAdd = ({ id }) => openPicker({
+  title: t('tpl.add'), allowText: false, allowNew: true, kinds: 'strength',
+  have: () => new Set(getTemplate(id).exIds),
+  add: ids => { const tp = getTemplate(id); ids.forEach(x => { if (!tp.exIds.includes(x)) tp.exIds.push(x); }); save(); render(); },
+});
+A.delTemplate = ({ id }) => confirmBox(t('tpl.delq'), t('delete'), () => {
+  db.groups.forEach(g => { if (g.templateId === id) delete g.templateId; });
+  db.templates = db.templates.filter(x => x.id !== id);
+  save(); navigate('/manage/templates');
+});
 
 /* 09-view-settings.js */
 V.settings = () => {
@@ -1450,7 +1670,7 @@ function initTimer(p) {
     const b = c && findBlock(c, p[2]);
     if (b && b.type === 'interval') {
       cfg = { rounds: b.rounds, n: Math.max(1, b.items.length), work: b.work, rest: b.rest, roundRest: b.roundRest, prep: db.settings.timer.prep, names: b.items.map(itemName).join('\n') };
-      back = p[0] === 's' ? '/session/' + p[1] : `/group/${p[1]}/template`;
+      back = '/session/' + p[1];
     }
   }
   return { mode: 'setup', cfg, back, phases: [], total: 0, pi: -1 };

@@ -53,7 +53,7 @@ function parseRoute() {
   const seg = h.split('/').filter(Boolean).map(decodeURIComponent);
   return { name: seg[0] || 'home', p: seg.slice(1) };
 }
-const NAV_OF = { home: 'home', group: 'home', session: 'home', brief: 'home', trainee: 'home', exsum: 'home', manage: 'manage', exercise: 'manage', timer: 'timer', metronome: 'metro', settings: 'settings' };
+const NAV_OF = { home: 'home', group: 'home', session: 'home', brief: 'home', trainee: 'home', exsum: 'home', manage: 'manage', exercise: 'manage', plan: 'home', template: 'manage', timer: 'timer', metronome: 'metro', settings: 'settings' };
 function navHtml(active) {
   const items = [['home', '/', 'users', 'nav.groups'], ['manage', '/manage', 'list', 'nav.manage'], ['timer', '/timer', 'timer', 'nav.timer'], ['metro', '/metronome', 'metro', 'nav.metro'], ['settings', '/settings', 'sliders', 'nav.settings']];
   return `<div class="brand">${t('app.name')}</div>` + items.map(([id, href, ic, k]) => `<a href="#${href}" class="${id === active ? 'on' : ''}">${icon(ic)}<span>${t(k)}</span></a>`).join('');

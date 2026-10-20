@@ -146,13 +146,14 @@ table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
 .matrix .stick { position: sticky; left: 0; z-index: 1; min-width: 78px; max-width: 120px; background: var(--surface2); font-weight: 600; font-size: .9rem; }
 .matrix thead .stick { z-index: 3; }
 .matrix tr:last-child > * { border-bottom: 0; }
-.matrix td .st { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; font-weight: 600; line-height: 1.2; }
-.matrix td .st .badge { flex: none; margin-top: 1px; }
+.matrix td { position: relative; }
+.matrix td .st { font-weight: 600; line-height: 1.2; }
+.matrix td .st.pad { padding-right: 20px; }
+.badge.corner { position: absolute; top: 0; right: 0; border-radius: 0 0 0 4px; font-size: .64rem; padding: 0 5px; line-height: 1.35; }
 .matrix td small, .matrix th small { display: block; color: var(--ink2); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: .7rem; line-height: 1.25; }
 .matrix td.hot { background: var(--warn-soft); }
 .matrix td.empty { color: var(--ink2); text-align: center; }
 .matrix td .next { color: var(--accent); font-weight: 600; font-size: .72rem; margin-top: 1px; line-height: 1.2; }
-.matrix td { min-width: 100px; }
 .warn-note { color: var(--warn) !important; }
 .matrix th a:hover { text-decoration: underline; }
 
@@ -341,3 +342,24 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 @supports (-webkit-touch-callout: none) {
   input, select, textarea { font-size: 16px !important; }
 }
+
+/* ---------- planner ---------- */
+.plan-list { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.plan-row { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-bottom: 1px solid var(--line); }
+.plan-row:last-child { border-bottom: 0; }
+.plan-row.on { background: var(--accent-soft); }
+.plan-name { flex: 1; min-width: 0; min-height: 40px; display: flex; align-items: center; gap: 8px; text-align: left; background: none; border: 0; cursor: pointer; font-weight: 600; padding: 0; }
+.plan-name .pn-n { width: 20px; height: 20px; border-radius: 4px; background: var(--accent); color: var(--accent-ink); font-size: .75rem; display: inline-flex; align-items: center; justify-content: center; flex: none; visibility: hidden; }
+.plan-row.on .pn-n { visibility: visible; }
+.plan-row .seg button { min-height: 32px; min-width: 28px; padding: 0 6px; }
+.plan-sum { font-size: .9rem; }
+.plan-sum > div + div { margin-top: 2px; }
+.plan-bar {
+  position: sticky; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); z-index: 5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--surface); border-top: 1px solid var(--line); padding: 6px 8px; margin-top: 8px;
+}
+.plan-bar .muted { flex: 1; min-width: 90px; }
+.chips .tag { margin: 0; font-size: .75rem; padding: 1px 8px; }
+@media (min-width: 900px) { .plan-bar { bottom: 0; } }
+@media (max-width: 559px) { .plan-bar .btn.primary { flex: 1 1 100%; }
+  .plan-bar { margin-left: 0; margin-right: 0; padding-left: 8px; padding-right: 8px; } }

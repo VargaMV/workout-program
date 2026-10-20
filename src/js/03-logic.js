@@ -89,7 +89,8 @@ const activeMembers = g => g.traineeIds.map(getTrainee).filter(x => x && x.activ
 
 function groupColumns(g) {
   const main = new Map();
-  for (const b of g.template || []) if (b.type === 'strength') for (const it of b.items) { const k = ek(it); if (!main.has(k)) main.set(k, { key: k }); }
+  const tp = getTemplate(g.templateId);
+  if (tp) for (const id of tp.exIds) if (getExercise(id)) main.set(id, { key: id });
   const members = new Set(g.traineeIds), extra = new Map();
   for (const e of db.entries) if (members.has(e.traineeId) && !main.has(e.ek) && isSet(e)) extra.set(e.ek, { key: e.ek });
   return { main: [...main.values()], extra: [...extra.values()].sort((a, b) => exName(a.key).localeCompare(exName(b.key), locale())) };

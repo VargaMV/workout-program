@@ -9,16 +9,24 @@ const DEFAULTS = () => ({
     timer: { rounds: 3, n: 3, work: 40, rest: 20, roundRest: 60, prep: 5, names: '' },
     metro: { sec: 1, accent: 0 },
   },
-  trainees: [], groups: [], exercises: [], sessions: [], entries: [],
+  trainees: [], groups: [], exercises: [], templates: [], sessions: [], entries: [],
 });
 
 function normalizeDb(raw) {
   const d = DEFAULTS();
   if (!raw || typeof raw !== 'object') return d;
-  for (const k of ['trainees', 'groups', 'exercises', 'sessions', 'entries']) if (Array.isArray(raw[k])) d[k] = raw[k];
+  for (const k of ['trainees', 'groups', 'exercises', 'templates', 'sessions', 'entries']) if (Array.isArray(raw[k])) d[k] = raw[k];
   const s = raw.settings;
   if (s && typeof s === 'object') {
     d.settings = { ...d.settings, ...s, timer: { ...d.settings.timer, ...(s.timer || {}) }, metro: { ...d.settings.metro, ...(s.metro || {}) } };
+  }
+  // Older data kept the usual workout as blocks inside the group: turn it into a named template.
+  for (const g of d.groups) {
+    if (!Array.isArray(g.template)) continue;
+    const ids = [];
+    for (const b of g.template) if (b.type === 'strength') for (const it of b.items) if (it.exId && !ids.includes(it.exId)) ids.push(it.exId);
+    if (ids.length && !g.templateId) { const tp = { id: uid(), name: g.name, exIds: ids }; d.templates.push(tp); g.templateId = tp.id; }
+    delete g.template;
   }
   return d;
 }
@@ -42,6 +50,7 @@ function ix() {
       ex: new Map(db.exercises.map(x => [x.id, x])),
       tr: new Map(db.trainees.map(x => [x.id, x])),
       gr: new Map(db.groups.map(x => [x.id, x])),
+      tp: new Map(db.templates.map(x => [x.id, x])),
     };
   }
   return _ix;
@@ -50,6 +59,7 @@ const getSession = id => ix().sess.get(id);
 const getExercise = id => ix().ex.get(id);
 const getTrainee = id => ix().tr.get(id);
 const getGroup = id => ix().gr.get(id);
+const getTemplate = id => (id ? ix().tp.get(id) : undefined);
 
 function deleteSessionData(ids) {
   const set = new Set(ids);

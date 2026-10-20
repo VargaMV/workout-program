@@ -1,14 +1,8 @@
 // Block editor (shared by sessions and group templates), session page, block briefing.
 function getCtx(cs) {
   const [k, id] = cs.split(':');
-  if (k === 's') {
-    const s = getSession(id);
-    return s && { kind: 's', s, blocks: s.blocks, after: () => { syncEntries(s); save(); render(); } };
-  }
-  const g = getGroup(id);
-  if (!g) return null;
-  g.template = g.template || [];
-  return { kind: 't', g, blocks: g.template, after: () => { save(); render(); } };
+  const sess = k === 's' && getSession(id);
+  return sess ? { kind: 's', s: sess, blocks: sess.blocks, after: () => { syncEntries(sess); save(); render(); } } : null;
 }
 const findBlock = (c, id) => c.blocks.find(b => b.id === id);
 const dctx = (cs, b) => `data-ctx="${cs}" data-b="${b.id}"`;
@@ -94,26 +88,43 @@ F.saveInterval = (fd, d) => {
   closeSheet(); c.after();
 };
 
-// ----- exercise picker (multi-select) -----
+// ----- exercise picker (multi-select), shared by blocks, templates and the planner -----
+// conf: { title, allowText, allowNew, kinds: 'strength'|'all', have: () => Set of ids already present, add: (ids, texts) => void }
 const existingKeys = c => new Set(c.blocks.filter(x => x.type === 'strength').flatMap(x => x.items.map(ek)));
-A.addItem = d => {
-  ui.pick = { ctx: d.ctx, b: d.b, sel: [], texts: [] };
-  openSheet(`<h2>${t('item.add')}</h2><input type="text" id="pickQ" data-i="pickSearch" placeholder="${t('pick.ph')}" autocomplete="off">
+function openPicker(conf) {
+  ui.pick = { conf, sel: [], texts: [] };
+  openSheet(`<h2>${esc(conf.title)}</h2><input type="text" id="pickQ" data-i="pickSearch" placeholder="${conf.allowText ? t('pick.ph') : t('pick.ph2')}" autocomplete="off">
     <div id="pickRes" class="pick-res">${pickResults('')}</div><div id="pickSel" class="pick-sel"></div>
     <div class="row end"><button class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary" id="pickAdd" data-a="pickAdd" disabled>${t('pick.add', { n: 0 })}</button></div>`);
+}
+A.addItem = d => {
+  const b = findBlock(getCtx(d.ctx), d.b);
+  openPicker({
+    title: t('item.add'), allowText: true, allowNew: b.type === 'strength', kinds: b.type === 'interval' ? 'all' : 'strength',
+    have: () => (b.type === 'strength' ? existingKeys(getCtx(d.ctx)) : new Set()),
+    add: (ids, texts) => {
+      const c = getCtx(d.ctx), blk = findBlock(c, d.b), have = existingKeys(c);
+      let dup = 0;
+      for (const it of [...ids.map(id => ({ exId: id, name: getExercise(id).name })), ...texts.map(name => ({ name }))]) {
+        const k = ek(it);
+        if (blk.type === 'strength') { if (have.has(k)) { dup++; continue; } have.add(k); }
+        blk.items.push({ id: uid(), ...it });
+      }
+      c.after();
+      if (dup) toast(t('pick.dup'));
+    },
+  });
 };
 function pickResults(q) {
-  const c = getCtx(ui.pick.ctx), b = findBlock(c, ui.pick.b), nq = norm(q), have = b.type === 'strength' ? existingKeys(c) : new Set();
-  const list = db.exercises.filter(x => (b.type === 'interval' || x.kind === 'strength') && (!nq || norm(x.name).includes(nq))).sort(byName);
+  const conf = ui.pick.conf, nq = norm(q), have = conf.have();
+  const list = db.exercises.filter(x => (conf.kinds === 'all' || x.kind === 'strength') && (!nq || norm(x.name).includes(nq))).sort(byName);
   let out = list.map(x => {
     const off = have.has(x.id);
     return `<label class="check ${off ? 'off' : ''}"><input type="checkbox" data-c="pickToggle" data-id="${x.id}" ${off ? 'disabled' : ''} ${ui.pick.sel.includes(x.id) ? 'checked' : ''}> ${esc(x.name)}${off ? `<span class="tag">${t('pick.exists')}</span>` : ''}</label>`;
   }).join('');
-  if (nq) {
-    if (!db.exercises.some(x => norm(x.name) === nq)) {
-      out += `<button class="pick-add" data-a="pickText">${icon('plus')} ${t('pick.text', { q: esc(q.trim()) })}</button>`;
-      if (b.type === 'strength') out += `<button class="pick-add" data-a="pickNew">${icon('plus')} ${t('pick.new', { q: esc(q.trim()) })}</button>`;
-    }
+  if (nq && !db.exercises.some(x => norm(x.name) === nq)) {
+    if (conf.allowText) out += `<button class="pick-add" data-a="pickText">${icon('plus')} ${t('pick.text', { q: esc(q.trim()) })}</button>`;
+    if (conf.allowNew) out += `<button class="pick-add" data-a="pickNew">${icon('plus')} ${t('pick.new', { q: esc(q.trim()) })}</button>`;
   }
   return out || `<p class="muted" style="padding:8px 10px;margin:0">${t('pick.none')}</p>`;
 }
@@ -145,19 +156,7 @@ A.pickNew = () => {
   q.value = ''; $('#pickRes').innerHTML = pickResults(''); pickRefresh();
   toast(t('pick.created'));
 };
-A.pickAdd = () => {
-  const p = ui.pick, c = getCtx(p.ctx), b = findBlock(c, p.b);
-  let dup = 0;
-  const items = [...p.sel.map(id => ({ exId: id, name: getExercise(id).name })), ...p.texts.map(name => ({ name }))];
-  const have = existingKeys(c);
-  for (const it of items) {
-    const k = ek(it);
-    if (b.type === 'strength') { if (have.has(k)) { dup++; continue; } have.add(k); }
-    b.items.push({ id: uid(), ...it });
-  }
-  closeSheet(); c.after();
-  if (dup) toast(t('pick.dup'));
-};
+A.pickAdd = () => { const { conf, sel, texts } = ui.pick; closeSheet(); conf.add(sel, texts); };
 
 // ----- session page -----
 V.session = ([id]) => {

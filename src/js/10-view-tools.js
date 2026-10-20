@@ -8,7 +8,7 @@ function initTimer(p) {
     const b = c && findBlock(c, p[2]);
     if (b && b.type === 'interval') {
       cfg = { rounds: b.rounds, n: Math.max(1, b.items.length), work: b.work, rest: b.rest, roundRest: b.roundRest, prep: db.settings.timer.prep, names: b.items.map(itemName).join('\n') };
-      back = p[0] === 's' ? '/session/' + p[1] : `/group/${p[1]}/template`;
+      back = '/session/' + p[1];
     }
   }
   return { mode: 'setup', cfg, back, phases: [], total: 0, pi: -1 };

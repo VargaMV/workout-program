@@ -31,7 +31,7 @@ V.home = () => {
 };
 
 A.newGroup = () => promptBox(t('group.new'), t('name'), '', name => {
-  const g = { id: uid(), name, traineeIds: [], template: [] };
+  const g = { id: uid(), name, traineeIds: [] };
   db.groups.push(g); save(); navigate('/group/' + g.id + '/matrix');
 });
 
@@ -52,7 +52,7 @@ function cellHtml(tid, key) {
   const pl = planned(tid, key);
   const hot = streak.n >= db.settings.threshold;
   const info = [e.reps ? esc(e.reps) : '', fmtDate(s.date), streak.n > 1 && streak.exact < streak.n ? t('exact', { n: streak.exact }) : ''].filter(Boolean).join(' · ');
-  return `<td class="${hot ? 'hot' : ''}"><div class="st"><span>${esc(entryLabel(e))}</span>${streak.n > 1 ? `<span class="badge ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${streak.n}</span>` : ''}</div>
+  return `<td class="${hot ? 'hot' : ''}">${streak.n > 1 ? `<span class="badge corner ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">×${streak.n}</span>` : ''}<div class="st ${streak.n > 1 ? 'pad' : ''}">${esc(entryLabel(e))}</div>
     <small>${info}</small>
     ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${pl.reps ? ' · ' + esc(pl.reps) : ''}</div>` : ''}</td>`;
 }
@@ -79,17 +79,27 @@ function sessionsTab(g) {
 }
 
 function templateTab(g) {
-  g.template = g.template || [];
-  return `<p class="muted">${t('template.help')}</p>${blocksHtml('t:' + g.id)}`;
+  const tp = getTemplate(g.templateId);
+  const opts = [...db.templates].sort(byName).map(x => `<option value="${x.id}" ${x.id === g.templateId ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+  return `<div class="card"><label class="f">${t('tpl.current')}<select data-c="grpTpl" data-g="${g.id}"><option value="">${t('tpl.none')}</option>${opts}</select></label>
+    ${tp ? `<div class="chips">${tp.exIds.filter(getExercise).map(x => `<span class="tag">${esc(exName(x))}</span>`).join('')}</div>` : ''}
+    <div class="row">${tp ? `<a class="btn small" href="#/template/${tp.id}">${t('tpl.edit')}</a><button class="btn small" data-a="tplCopy" data-g="${g.id}">${t('tpl.copy')}</button>` : ''}<button class="btn small" data-a="tplNewFor" data-g="${g.id}">${t('tpl.new')}</button></div></div>
+    <p class="muted">${t('tpl.help')}</p>`;
 }
-
-A.newSession = ({ g }) => {
-  const grp = getGroup(g);
-  const s = { id: uid(), groupId: g, date: todayStr(), created: Date.now(), attendeeIds: activeMembers(grp).map(x => x.id), blocks: cloneBlocks(grp.template || []), note: '' };
-  db.sessions.push(s);
-  syncEntries(s); save();
-  navigate('/session/' + s.id);
+C.grpTpl = (v, d) => { const g = getGroup(d.g); if (v) g.templateId = v; else delete g.templateId; save(); render(); };
+A.tplCopy = ({ g }) => {
+  const grp = getGroup(g), tp = getTemplate(grp.templateId);
+  promptBox(t('tpl.copy'), t('name'), tp.name, name => {
+    const n = { id: uid(), name, exIds: [...tp.exIds] };
+    db.templates.push(n); grp.templateId = n.id; save(); render(); toast(t('tpl.copied'));
+  });
 };
+A.tplNewFor = ({ g }) => promptBox(t('tpl.new'), t('name'), '', name => {
+  const n = { id: uid(), name, exIds: [] };
+  db.templates.push(n); getGroup(g).templateId = n.id; save(); navigate('/template/' + n.id);
+});
+
+A.newSession = ({ g }) => navigate('/plan/' + g);
 
 V.exsum = ([gid, key]) => {
   const g = getGroup(gid);

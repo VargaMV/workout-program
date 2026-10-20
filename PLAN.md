@@ -60,3 +60,10 @@ Audio notes: Web Audio API, scheduled ahead on the audio clock (not setInterval)
 6. Trainee history
 7. Desktop layout, polish, single-file build
 8. Interval timer + metronome (Web Audio, wake lock)
+
+## Update: templates and planner
+- Templates are named exercise lists (no grouping) managed under Manage -> Templates; several groups can share one, a group
+  switches (or copies) its template roughly every 8 weeks. The overview columns come from the group's template.
+- New session = planner page: tap exercise names to fill blocks of 3 automatically, or use the 1/2/3/- buttons per row.
+  Shortcuts: "like last time", "split by 3", clear; extra exercises outside the template; interval block copied from the last one.
+- Data: `templates: [{id, name, exIds[]}]`, `group.templateId`. Old `group.template` blocks are migrated on load/import.
