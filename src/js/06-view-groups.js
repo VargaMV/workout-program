@@ -15,17 +15,21 @@ function backupBanner() {
 }
 
 V.home = () => {
-  const gs = [...db.groups].sort(byName);
+  const all = [...db.groups].sort(byName), gs = all.filter(g => !g.solo), ps = all.filter(g => g.solo);
+  const lastOf = g => db.sessions.filter(x => x.groupId === g.id && x.date <= todayStr()).sort(sessionCmp).pop();
+  const cards = list => `<div class="cards">${list.map(g => {
+    const last = lastOf(g), m = g.solo ? activeMembers(g)[0] : null;
+    const sub = [g.solo ? '' : t('n.members', { n: activeMembers(g).length }), last ? t('last.session', { d: fmtDate(last.date) }) : ''].filter(Boolean).join(' · ');
+    return `<a class="card link" href="#/group/${g.id}"><div class="card-t">${esc(g.name)}</div>${sub ? `<div class="muted">${sub}</div>` : ''}${m && m.note ? `<div class="muted warn-note">${esc(m.note)}</div>` : ''}</a>`;
+  }).join('')}</div>`;
+  const buttons = `<div class="join"><button class="btn" data-a="newGroup">${icon('plus')} ${t('group.new')}</button><button class="btn" data-a="newPerson">${icon('plus')} ${t('person.new')}</button></div>`;
   let body;
-  if (!gs.length) {
+  if (!all.length) {
     body = `<div class="empty-state"><h2>${t('home.empty.t')}</h2><p>${t('home.empty.p')}</p>
-      <ol class="steps"><li>${t('home.s1')}</li><li>${t('home.s2')}</li><li>${t('home.s3')}</li></ol>
-      <div class="row" style="justify-content:center"><button class="btn primary" data-a="newGroup">${t('group.new')}</button><a class="btn" href="#/manage/exercises">${t('home.openEx')}</a></div></div>`;
+      <ol class="steps"><li>${t('home.s1')}</li><li>${t('home.s2')}</li><li>${t('home.s3')}</li></ol></div>${buttons}
+      <a class="btn full" href="#/manage/exercises">${t('home.openEx')}</a>`;
   } else {
-    body = `<div class="cards">${gs.map(g => {
-      const last = db.sessions.filter(s => s.groupId === g.id && s.date <= todayStr()).sort(sessionCmp).pop();
-      return `<a class="card link" href="#/group/${g.id}"><div class="card-t">${esc(g.name)}</div><div class="muted">${t('n.members', { n: activeMembers(g).length })}${last ? ' · ' + t('last.session', { d: fmtDate(last.date) }) : ''}</div></a>`;
-    }).join('')}</div><button class="btn full" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
+    body = `${gs.length ? `<h3 class="sect-h">${t('nav.groups')}</h3>${cards(gs)}` : ''}${ps.length ? `<h3 class="sect-h">${t('solo.title')}</h3>${cards(ps)}` : ''}${buttons}`;
   }
   return { html: header(t('nav.groups')) + backupBanner() + `<div class="page">${body}</div>` };
 };
@@ -38,11 +42,12 @@ A.newGroup = () => promptBox(t('group.new'), t('name'), '', name => {
 V.group = ([id, tab = 'matrix']) => {
   const g = getGroup(id);
   if (!g) return notFound();
-  const tabs = ['matrix', 'sessions', 'members', 'template'];
+  const tabs = g.solo ? ['matrix', 'sessions', 'template'] : ['matrix', 'sessions', 'members', 'template'];
+  if (!tabs.includes(tab)) tab = 'matrix';
   const nav = `<nav class="tabs">${tabs.map(x => `<a class="${x === tab ? 'on' : ''}" href="#/group/${g.id}/${x}">${t('tab.' + x)}</a>`).join('')}</nav>`;
-  const body = tab === 'sessions' ? sessionsTab(g) : tab === 'template' ? templateTab(g) : tab === 'members' ? membersTab(g) : matrixTab(g);
-  const actions = `<button class="icon-btn" data-a="editGroup" data-id="${g.id}" aria-label="${t('group.edit')}">${icon('edit')}</button><button class="btn primary" data-a="newSession" data-g="${g.id}">${icon('plus')}<span class="hide-s">${t('session.new')}</span></button>`;
-  return { html: header(g.name, { back: '/', actions, sub: t('n.members', { n: activeMembers(g).length }) }) + nav + `<div class="page wide">${body}</div>` };
+  const body = tab === 'sessions' ? sessionsTab(g) : tab === 'template' ? templateTab(g) : tab === 'members' ? membersTab(g) : g.solo ? soloOverview(g) : matrixTab(g);
+  const actions = `<button class="icon-btn" data-a="${g.solo ? 'editPerson' : 'editGroup'}" data-id="${g.id}" aria-label="${t('group.edit')}">${icon('edit')}</button><button class="btn primary" data-a="newSession" data-g="${g.id}">${icon('plus')}<span class="hide-s">${t('session.new')}</span></button>`;
+  return { html: header(g.name, { back: '/', actions, sub: g.solo ? t('solo.title') : t('n.members', { n: activeMembers(g).length }) }) + nav + `<div class="page wide">${body}</div>` };
 };
 
 function cellHtml(tid, key) {
@@ -75,8 +80,27 @@ C.showAll = (v, d) => { (ui.showAll = ui.showAll || {})[d.g] = v; render(); };
 function sessionsTab(g) {
   const ss = db.sessions.filter(s => s.groupId === g.id).sort(sessionCmp).reverse();
   if (!ss.length) return `<div class="empty-state"><p>${t('sessions.empty')}</p><button class="btn primary" data-a="newSession" data-g="${g.id}">${t('session.new')}</button></div>`;
-  return `<div class="cards">${ss.map(s => `<div class="card sess"><a class="sess-main" href="#/session/${s.id}/program"><div class="card-t">${fmtLong(s.date)}${s.date > todayStr() ? `<span class="tag">${t('planned')}</span>` : ''}</div><div class="muted">${t('n.attendees', { n: s.attendeeIds.length })} · ${t('n.blocks', { n: s.blocks.length })}</div></a>
+  return `<div class="cards">${ss.map(s => `<div class="card sess"><a class="sess-main" href="#/session/${s.id}/program"><div class="card-t">${fmtLong(s.date)}${s.date > todayStr() ? `<span class="tag">${t('planned')}</span>` : ''}</div><div class="muted">${g.solo ? '' : t('n.attendees', { n: s.attendeeIds.length }) + ' · '}${t('n.blocks', { n: s.blocks.length })}</div></a>
     <div class="sess-btns"><a class="btn small" href="#/session/${s.id}/program">${t('tab.program')}</a><a class="btn small" href="#/session/${s.id}/log">${t('tab.log')}</a></div></div>`).join('')}</div>`;
+}
+
+// Personal training: one person, so the overview is a list of exercises instead of a one-row matrix.
+function soloOverview(g) {
+  const m = activeMembers(g)[0];
+  if (!m) return `<div class="empty-state"><p>${t('matrix.nomembers')}</p></div>`;
+  const { main, extra } = groupColumns(g);
+  const keys = [...main, ...extra].map(c => c.key);
+  if (!keys.length) return `<div class="empty-state"><p>${t('matrix.nocols')}</p><a class="btn" href="#/group/${g.id}/template">${t('tab.template')}</a></div>`;
+  const rows = keys.map(k => {
+    const L = latest(m.id, k), pl = L && planned(m.id, k), path = stagePath(m.id, k);
+    const hot = L && L.streak.n >= db.settings.threshold;
+    const detail = L ? [extraText(L.e, true), fmtDate(L.s.date)].filter(Boolean).join(' · ') : '';
+    return `<div class="srow ${hot ? 'hot' : ''}"><div class="srow-h"><span class="srow-n">${esc(exName(k))}</span>${L ? `<span class="srow-s">${esc(entryLabel(L.e))}${L.streak.n > 1 ? ` <span class="badge ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">${streakLabel(L.streak)}</span>` : ''}</span>` : `<span class="muted">–</span>`}</div>
+      ${L ? `<div class="muted">${esc(detail)}${pl && !sameExact(pl, L.e) ? ` · <span class="next-inline">→ ${esc(entryLabel(pl))}${extraText(pl, true) ? ' · ' + esc(extraText(pl, true)) : ''}</span>` : ''}</div>` : ''}
+      ${path.length > 1 ? `<div class="path">${path.map((p, i) => `${i ? '<span class="a">→</span>' : ''}<span class="p">${esc(entryLabel(p.e))} (${p.n})</span>`).join('')}</div>` : ''}</div>`;
+  }).join('');
+  return `<div class="row between"><span class="muted">${m.note ? `<span class="warn-note">${esc(m.note)}</span>` : ''}</span><a class="btn small" href="#/trainee/${m.id}">${t('trainee.history')}</a></div><div class="rows solo">${rows}</div>
+    <p class="muted">${t('matrix.legend')}</p>`;
 }
 
 function membersTab(g) {

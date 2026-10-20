@@ -73,3 +73,9 @@ Audio notes: Web Audio API, scheduled ahead on the audio clock (not setInterval)
   progression"), **Napló** (per-trainee rows, one block open at a time), **Szerkesztés** (date, attendees, block/exercise editing).
 - Route `#/session/ID/(program|log|edit)`; without a tab it opens Program for today/future sessions and Napló for past ones.
 - Session cards in the group's list have direct Program / Napló buttons.
+
+## Update: members and personal training
+- Trainees are managed inside their group (Tagok tab); there is no global trainee list.
+- **Személy edzés** = a group with `solo: true` and one member (new person or an existing member, so history is shared).
+  Home lists "Csoportok" and "Személy edzés" separately; a solo group has no Tagok tab, no attendee chips, and its overview is a
+  per-exercise list (current progression, N/M badge, path) instead of a matrix.

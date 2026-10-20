@@ -8,12 +8,7 @@ V.trainee = ([id]) => {
   const attended = db.sessions.filter(s => s.attendeeIds.includes(id) && s.date <= today).sort(sessionCmp).reverse();
   const keys = [...new Set(mine.map(e => e.ek))].sort((a, b) => exName(a).localeCompare(exName(b), locale()));
   const rows = keys.map(k => {
-    const L = latest(id, k), h = history(id, k).slice().reverse();
-    const path = [];
-    for (const x of h) {
-      const last = path[path.length - 1];
-      if (last && sameStage(last.e, x.e)) last.n++; else path.push({ e: x.e, n: 1 });
-    }
+    const L = latest(id, k), path = stagePath(id, k);
     return `<div class="card"><div class="row between" style="margin:0"><div class="card-t">${esc(exName(k))}</div>${L ? `<div>${esc(entryLabel(L.e))} ${streakChips(L.streak)}</div>` : ''}</div>
       <div class="path">${path.map((p, i) => `${i ? `<span class="a">→</span>` : ''}<span class="p">${esc(entryLabel(p.e))} (${p.n})</span>`).join('')}</div></div>`;
   }).join('');
@@ -69,6 +64,7 @@ F.saveTrainee = (fd, d) => {
     if (g) g.traineeIds.push(tr.id);
   }
   tr.name = name; tr.note = String(fd.get('note') || '').trim();
+  db.groups.forEach(g => { if (g.solo && g.traineeIds[0] === tr.id) g.name = name; });
   save(); closeSheet(); render();
 };
 A.leaveGroup = ({ id, g }) => { const grp = getGroup(g); grp.traineeIds = grp.traineeIds.filter(x => x !== id); save(); closeSheet(); render(); };
@@ -94,7 +90,48 @@ F.saveGroup = (fd, d) => {
   if (!name) return;
   g.name = name; save(); closeSheet(); render();
 };
-A.delGroup = ({ id }) => confirmBox(t('group.delq'), t('delete'), () => { deleteGroup(id); save(); navigate('/'); render(); });
+A.delGroup = ({ id }) => confirmBox(t('group.delq'), t('delete'), () => {
+  const g = getGroup(id), members = g.solo ? [...g.traineeIds] : [];
+  deleteGroup(id);
+  // a personal-training person who is nowhere else goes with it
+  members.forEach(tid => { if (!db.groups.some(x => x.traineeIds.includes(tid)) && !db.sessions.some(x => x.attendeeIds.includes(tid))) deleteTrainee(tid); });
+  save(); navigate('/'); render();
+});
+
+// ---------- personal training (a group of one) ----------
+A.newPerson = () => {
+  const others = [...db.trainees].sort(byName);
+  openSheet(`<h2>${t('person.new')}</h2><form data-f="savePerson" data-id="">
+    ${others.length ? `<label class="f">${t('person.existing')}<select name="existing"><option value="">${t('person.brandnew')}</option>${others.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></label>` : ''}
+    <label class="f">${t('name')}<input type="text" name="name" autocomplete="off" autofocus></label>
+    <label class="f">${t('trainee.note')}<input type="text" name="note" placeholder="${t('trainee.note.ph')}"></label>
+    <div class="row end"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></div></form>`);
+};
+A.editPerson = ({ id }) => {
+  const g = getGroup(id), m = getTrainee(g.traineeIds[0]) || { name: g.name, note: '' };
+  openSheet(`<h2>${t('person.edit')}</h2><form data-f="savePerson" data-id="${id}">
+    <label class="f">${t('name')}<input type="text" name="name" value="${esc(m.name)}" required autocomplete="off"></label>
+    <label class="f">${t('trainee.note')}<input type="text" name="note" value="${esc(m.note || '')}" placeholder="${t('trainee.note.ph')}"></label>
+    <div class="row between"><button type="button" class="btn ghost-danger" data-a="delGroup" data-id="${id}">${t('delete')}</button><span class="row" style="margin:0"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></span></div></form>`);
+};
+F.savePerson = (fd, d) => {
+  const name = String(fd.get('name') || '').trim(), note = String(fd.get('note') || '').trim(), existing = fd.get('existing');
+  if (d.id) {
+    const g = getGroup(d.id), m = getTrainee(g.traineeIds[0]);
+    if (!name) return;
+    if (m) { m.name = name; m.note = note; }
+    g.name = name; save(); closeSheet(); render();
+    return;
+  }
+  let m = existing && getTrainee(existing);
+  if (!m) {
+    if (!name) return;
+    m = { id: uid(), name, note }; db.trainees.push(m);
+  }
+  const g = { id: uid(), name: m.name, solo: true, traineeIds: [m.id] };
+  db.groups.push(g); save(); closeSheet(); navigate('/group/' + g.id + '/matrix');
+};
+
 
 // ---------- exercise editor ----------
 A.newExercise = () => promptBox(t('ex.new'), t('name'), '', name => {

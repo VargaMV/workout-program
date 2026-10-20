@@ -43,6 +43,16 @@ function streakAt(h, i) {
   return { n, exact: x };
 }
 
+// Progression path of a trainee for one exercise, oldest first: [{ e, n }] (n = sessions on that step in a row).
+function stagePath(tid, key) {
+  const path = [];
+  for (const x of history(tid, key).slice().reverse()) {
+    const last = path[path.length - 1];
+    if (last && sameStage(last.e, x.e)) last.n++; else path.push({ e: x.e, n: 1 });
+  }
+  return path;
+}
+
 // Latest done (not in the future) entry with its streak.
 function latest(tid, key) {
   const h = history(tid, key), today = todayStr();

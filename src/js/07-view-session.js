@@ -91,7 +91,7 @@ function programHtml(s) {
       <div class="row"><a class="btn small primary" href="#/timer/s/${s.id}/${b.id}">${icon('timer')} ${t('timer.start')}</a></div></section>`;
   }).join('');
   return `${s.note ? `<p class="muted"><i>${esc(s.note)}</i></p>` : ''}${s.date > todayStr() ? `<p class="muted">${t('session.planned')}</p>` : ''}
-    ${s.blocks.length ? `<div class="row"><button class="btn small" data-a="expandAll">${t('expand.all')}</button><span class="muted">${t('n.attendees', { n: people.length })}</span></div>` : ''}
+    ${s.blocks.length ? `<div class="row"><button class="btn small" data-a="expandAll">${t('expand.all')}</button>${getGroup(s.groupId) && getGroup(s.groupId).solo ? '' : `<span class="muted">${t('n.attendees', { n: people.length })}</span>`}</div>` : ''}
     ${blocks || `<p class="muted">${t('block.empty')}</p>`}`;
 }
 A.expandAll = () => {
@@ -254,8 +254,8 @@ V.session = ([id, tab]) => {
     const chip = m => `<button class="chip ${s.attendeeIds.includes(m.id) ? 'on' : ''}" data-a="toggleAtt" data-s="${s.id}" data-t="${m.id}">${esc(m.name)}</button>`;
     body = `<div class="card"><div class="fields"><label class="f">${t('date')}<input type="date" value="${s.date}" data-c="sdate" data-s="${s.id}"></label>
         <label class="f">${t('note')}<input type="text" value="${esc(s.note || '')}" data-c="snote" data-s="${s.id}"></label></div>
-        <div class="muted" style="margin-bottom:6px">${t('attendees')} (${s.attendeeIds.length})</div>
-        <div class="chips">${members.map(chip).join('')}${guests.map(chip).join('')}<button class="chip" data-a="addGuest" data-s="${s.id}">${icon('plus')} ${t('guest')}</button></div></div>
+        ${g && g.solo ? '' : `<div class="muted" style="margin-bottom:6px">${t('attendees')} (${s.attendeeIds.length})</div>
+        <div class="chips">${members.map(chip).join('')}${guests.map(chip).join('')}<button class="chip" data-a="addGuest" data-s="${s.id}">${icon('plus')} ${t('guest')}</button></div>`}</div>
       ${blocksHtml('s:' + s.id)}
       <div class="row end"><button class="btn ghost-danger" data-a="delSession" data-s="${s.id}">${icon('trash')} ${t('session.delete')}</button></div>`;
   } else body = tab === 'log' ? logHtml(s) : programHtml(s);

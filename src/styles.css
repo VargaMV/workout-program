@@ -402,3 +402,19 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .sess { display: flex; align-items: center; gap: 8px; }
 .sess-main { flex: 1; min-width: 0; }
 .sess-btns { display: flex; gap: 4px; }
+
+/* ---------- personal training ---------- */
+.sect-h { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink2); margin: 10px 0 4px; padding: 0 8px; }
+.rows.solo { gap: 6px; }
+.srow { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; }
+.srow.hot { background: var(--warn-soft); }
+.srow-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.srow-n { font-weight: 700; }
+.srow-s { font-weight: 600; text-align: right; }
+.next-inline { color: var(--accent); font-weight: 600; }
+@media (max-width: 559px) {
+  .srow { border-radius: 0; border-left: 0; border-right: 0; }
+  .join .btn, .join .btn:first-child, .join .btn:last-child { border-radius: 0; }
+  .join .btn:first-child { border-left: 0; }
+  .join .btn:last-child { border-right: 0; }
+}
