@@ -5,6 +5,7 @@ V.settings = () => {
     <div class="card"><label class="f">${t('set.theme')}</label>${seg('theme', [['auto', t('theme.auto')], ['light', t('theme.light')], ['dark', t('theme.dark')]], s.theme)}</div>
     <div class="card"><label class="f">${t('set.threshold')}<input type="number" inputmode="numeric" min="0" max="50" value="${s.threshold}" data-c="threshold"></label><p class="muted">${t('set.threshold.help')}</p></div>
     <div class="card"><h2>${t('set.data')}</h2><p class="muted">${t('set.data.help')}</p>
+      <p class="muted">${t('set.size', { mb: (dataSize / 1e6).toFixed(2) })}</p>
       <p class="muted">${s.lastBackup ? t('set.lastbackup', { d: fmtDate(s.lastBackup) }) : t('backup.never')}</p>
       <div class="row"><button class="btn primary" data-a="export">${t('export')}</button><button class="btn" data-a="import">${t('import')}</button><button class="btn ghost-danger" data-a="wipe">${t('set.wipe')}</button></div></div>`;
   return { html: header(t('nav.settings')) + `<div class="page">${body}</div>` };

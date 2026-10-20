@@ -431,3 +431,5 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .donebtn { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); color: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; flex: none; }
 .donebtn .i { width: 14px; height: 14px; stroke-width: 3; }
 .donebtn.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.banner.bad { background: var(--danger-soft); color: var(--danger); }

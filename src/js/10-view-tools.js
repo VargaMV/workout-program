@@ -195,9 +195,13 @@ function mSched() {
   }
 }
 async function mStart() {
+  if (M.starting) return;
+  M.starting = true;
   const ac = audio();
-  if (!ac) { toast(t('err.audio')); return; }
+  if (!ac) { M.starting = false; toast(t('err.audio')); return; }
   await ac.resume();
+  M.starting = false;
+  if (!M) return;
   M.on = true; M.beat = 0; M.n = 0; M.q = [];
   M.bus = newBus(); M.next = ac.currentTime + 0.1;
   mSched(); M.timer = setInterval(mSched, 250);

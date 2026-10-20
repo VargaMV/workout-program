@@ -45,16 +45,26 @@ function normalizeDb(raw) {
   return d;
 }
 
+let storageOk = true, dataSize = 0;
 function load() {
-  try { const s = localStorage.getItem(STORE_KEY); db = normalizeDb(s ? JSON.parse(s) : null); }
-  catch (e) { db = DEFAULTS(); }
+  let s = null;
+  try { s = localStorage.getItem(STORE_KEY); db = normalizeDb(s ? JSON.parse(s) : null); dataSize = s ? s.length : 0; }
+  catch (e) {
+    db = DEFAULTS();
+    // unreadable data: keep a copy so the next save does not silently overwrite it
+    try { if (s) localStorage.setItem(STORE_KEY + '.corrupt', s); } catch (e2) { storageOk = false; }
+  }
+  try { localStorage.setItem(STORE_KEY + '.probe', '1'); localStorage.removeItem(STORE_KEY + '.probe'); } catch (e) { storageOk = false; }
+  // ask the browser not to evict the data when it is short on space
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* optional */ }
 }
 
 function save() {
   _ix = null;
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
-  catch (e) { toast(t('err.save')); }
+  try { const s = JSON.stringify(db); dataSize = s.length; localStorage.setItem(STORE_KEY, s); }
+  catch (e) { storageOk = false; toast(t('err.save')); }
 }
+const bigData = () => dataSize > 2.5e6; // localStorage holds roughly 5M characters
 
 // Lookup maps, rebuilt lazily after every save().
 function ix() {
@@ -81,6 +91,7 @@ function deleteSessionData(ids) {
   db.entries = db.entries.filter(e => !set.has(e.sessionId));
 }
 function deleteTrainee(id) {
+  db.groups.filter(g => g.solo && g.traineeIds.length === 1 && g.traineeIds[0] === id).forEach(g => deleteGroup(g.id));
   db.trainees = db.trainees.filter(x => x.id !== id);
   db.groups.forEach(g => { g.traineeIds = g.traineeIds.filter(x => x !== id); });
   db.sessions.forEach(s => { s.attendeeIds = s.attendeeIds.filter(x => x !== id); });

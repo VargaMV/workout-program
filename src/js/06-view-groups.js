@@ -1,12 +1,15 @@
 // Home (groups), group page (matrix / sessions / template), exercise summary.
 // "5/2" = 5th session on this progression, 2nd in a row with the same reps and weight.
 const streakLabel = sk => `${sk.n}/${sk.exact}`;
+const isHot = sk => db.settings.threshold > 0 && sk.n >= db.settings.threshold; // threshold 0 = highlighting off
 function streakChips(sk) {
   if (!sk || sk.n < 2) return '';
-  return `<span class="badge ${sk.n >= db.settings.threshold ? 'hot' : ''}" title="${esc(t('streak.tip'))}">${streakLabel(sk)}</span>`;
+  return `<span class="badge ${isHot(sk) ? 'hot' : ''}" title="${esc(t('streak.tip'))}">${streakLabel(sk)}</span>`;
 }
 
 function backupBanner() {
+  if (!storageOk) return `<div class="banner bad"><span>${t('warn.nostorage')}</span><button class="btn small" data-a="export">${t('export')}</button></div>`;
+  if (bigData()) return `<div class="banner"><span>${t('warn.big', { mb: (dataSize / 1e6).toFixed(1) })}</span><button class="btn small" data-a="export">${t('export')}</button></div>`;
   if (!db.trainees.length) return '';
   const lb = db.settings.lastBackup;
   const days = lb ? Math.floor((Date.now() - parseDate(lb).getTime()) / 864e5) : null;
@@ -55,7 +58,7 @@ function cellHtml(tid, key) {
   if (!L) return '<td class="empty">–</td>';
   const { e, s, streak } = L;
   const pl = planned(tid, key);
-  const hot = streak.n >= db.settings.threshold;
+  const hot = isHot(streak);
   const info = [esc(extraText(e, true)), fmtDate(s.date)].filter(Boolean).join(' · ');
   return `<td class="${hot ? 'hot' : ''}">${streak.n > 1 ? `<span class="badge corner ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">${streakLabel(streak)}</span>` : ''}<div class="st ${streak.n > 1 ? 'pad' : ''}">${esc(entryLabel(e))}</div>
     <small>${info}</small>
@@ -93,7 +96,7 @@ function soloOverview(g) {
   if (!keys.length) return `<div class="empty-state"><p>${t('matrix.nocols')}</p><a class="btn" href="#/group/${g.id}/template">${t('tab.template')}</a></div>`;
   const rows = keys.map(k => {
     const L = latest(m.id, k), pl = L && planned(m.id, k), path = stagePath(m.id, k);
-    const hot = L && L.streak.n >= db.settings.threshold;
+    const hot = L && isHot(L.streak);
     const detail = L ? [extraText(L.e, true), fmtDate(L.s.date)].filter(Boolean).join(' · ') : '';
     return `<div class="srow ${hot ? 'hot' : ''}"><div class="srow-h"><span class="srow-n">${esc(exName(k))}</span>${L ? `<span class="srow-s">${esc(entryLabel(L.e))}${L.streak.n > 1 ? ` <span class="badge ${hot ? 'hot' : ''}" title="${esc(t('streak.tip'))}">${streakLabel(L.streak)}</span>` : ''}</span>` : `<span class="muted">–</span>`}</div>
       ${L ? `<div class="muted">${esc(detail)}${pl && !sameExact(pl, L.e) ? ` · <span class="next-inline">→ ${esc(entryLabel(pl))}${extraText(pl, true) ? ' · ' + esc(extraText(pl, true)) : ''}</span>` : ''}</div>` : ''}

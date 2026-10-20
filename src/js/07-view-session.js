@@ -330,15 +330,16 @@ function setRowDone(row, e, on) {
   refreshDone();
 }
 function refreshDone() {
-  let total = 0, done = 0;
-  document.querySelectorAll('.item').forEach(it => {
-    const rows = it.querySelectorAll('.trow'), d = it.querySelectorAll('.trow.done').length;
-    const c = it.querySelector('.cnt');
-    if (c) c.textContent = `${d}/${rows.length}`;
-    total += rows.length; done += d;
+  document.querySelectorAll('.block').forEach(blk => {
+    const rows = blk.querySelectorAll('.trow');
+    if (!rows.length) return;
+    blk.querySelectorAll('.item').forEach(it => {
+      const c = it.querySelector('.cnt'), r = it.querySelectorAll('.trow');
+      if (c) c.textContent = `${it.querySelectorAll('.trow.done').length}/${r.length}`;
+    });
+    const bc = blk.querySelector('.block-h.acc .bc');
+    if (bc) bc.textContent = `${blk.querySelectorAll('.trow.done').length}/${rows.length}`;
   });
-  const bc = document.querySelector('.block-h.acc .bc');
-  if (bc && total) bc.textContent = `${done}/${total}`;
 }
 C.reps = (v, d, el) => {
   const e = getEntry(d.s, d.t, d.k), n = parseInt(v, 10);
