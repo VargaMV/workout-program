@@ -45,7 +45,7 @@ function logHtml(s) {
   const openId = s.blocks.some(b => b.id === open) ? open : open === '' ? '' : s.blocks[0].id;
   return `<div class="blocks">${s.blocks.map((b, bi) => {
     const on = b.id === openId, strength = b.type === 'strength';
-    const head = `<button class="block-h acc" data-a="openBlock" data-s="${s.id}" data-b="${b.id}"><span class="acc-t"><span class="block-t"><span class="bn">${bi + 1}</span><strong>${t(strength ? 'block.strength' : 'block.interval')}</strong><span class="muted">${t('n.rounds', { n: b.rounds })}</span></span>${on ? '' : `<span class="muted acc-s">${esc(blockNames(b))}</span>`}</span>${icon(on ? 'up' : 'down')}</button>`;
+    const head = `<button class="block-h acc" data-a="openBlock" data-s="${s.id}" data-b="${b.id}"><span class="acc-t"><span class="block-t"><span class="bn">${bi + 1}</span><strong>${t(strength ? 'block.strength' : 'block.interval')}</strong><span class="muted">${t('n.rounds', { n: b.rounds })}</span></span>${on ? '' : `<span class="muted acc-s">${esc(blockNames(b))}</span>`}</span>${strength ? `<span class="cnt bc">${blockDone(s, b)}</span>` : ''}${icon(on ? 'up' : 'down')}</button>`;
     let body = '';
     if (on) {
       if (strength) {
@@ -53,15 +53,21 @@ function logHtml(s) {
         const items = b.items.map(it => {
           const key = ek(it);
           const rows = people.map(tr => traineeRow(s, tr, key, b.rounds)).join('') || `<p class="muted">${t('session.noatt')}</p>`;
-          return `<div class="item"><div class="item-h"><div class="item-n">${esc(itemName(it))}${it.exId ? '' : `<span class="tag">${t('freetext')}</span>`}</div></div>${rows}</div>`;
+          const es = people.map(tr => getEntry(s.id, tr.id, key)).filter(Boolean);
+          return `<div class="item"><div class="item-h"><div class="item-n">${esc(itemName(it))}${it.exId ? '' : `<span class="tag">${t('freetext')}</span>`}</div><span class="cnt">${es.filter(e => e.done).length}/${es.length}</span></div>${rows}</div>`;
         }).join('');
-        body = `${b.items.length ? `<a class="block-top" href="#/brief/${s.id}/${b.id}">${t('brief.open')} ${icon('next')}</a>` : ''}<div class="block-b">${items || `<p class="muted">${t('block.empty')}</p>`}</div>`;
+        body = `<div class="block-b">${items || `<p class="muted">${t('block.empty')}</p>`}</div>`;
       } else {
         body = `<a class="block-top" href="#/timer/s/${s.id}/${b.id}">${icon('timer')} ${t('timer.start')}</a><div class="block-b"><div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}</div>${b.items.map((it, i) => `<div class="iv-item"><span>${i + 1}. ${esc(itemName(it))}</span></div>`).join('') || `<p class="muted">${t('block.empty')}</p>`}</div>`;
       }
     }
     return `<section class="block ${strength ? '' : 'iv'}">${head}${body}</section>`;
   }).join('')}</div>`;
+}
+function blockDone(s, b) {
+  let total = 0, done = 0;
+  for (const it of b.items) for (const tid of s.attendeeIds) { const e = getEntry(s.id, tid, ek(it)); if (e) { total++; if (e.done) done++; } }
+  return total ? `${done}/${total}` : '';
 }
 A.openBlock = d => { (ui.openBlock = ui.openBlock || {})[d.s] = (ui.openBlock[d.s] === d.b || (!ui.openBlock[d.s] && getSession(d.s).blocks[0].id === d.b)) ? '' : d.b; render(); };
 
@@ -112,7 +118,7 @@ function traineeRow(s, tr, key, rounds) {
   const canUp = lad.length && !e.text && idx < lad.length - 1;
   const d = `data-s="${s.id}" data-t="${tr.id}" data-k="${esc(key)}"`;
   const wOn = !!e.weighted;
-  return `<div class="trow ${e.note ? 'show-note' : ''} ${wOn ? 'show-w' : ''}"><div class="tn"><a href="#/trainee/${tr.id}">${esc(tr.name)}</a>${tr.note ? `<span class="prev warn-note">${esc(tr.note)}</span>` : ''}<span class="prev">${prev ? t('last') + ': ' + esc(entryLabel(prev)) + (extraText(prev) ? ' · ' + esc(extraText(prev)) : '') : t('first')}</span></div>
+  return `<div class="trow ${e.note ? 'show-note' : ''} ${wOn ? 'show-w' : ''} ${e.done ? 'done' : ''}"><div class="tn"><span class="tn-l"><button class="donebtn ${e.done ? 'on' : ''}" data-a="togDone" ${d} title="${t('done.btn')}" aria-label="${t('done.btn')}">${icon('check')}</button><a href="#/trainee/${tr.id}">${esc(tr.name)}</a></span>${tr.note ? `<span class="prev warn-note">${esc(tr.note)}</span>` : ''}<span class="prev">${prev ? t('last') + ': ' + esc(entryLabel(prev)) + (extraText(prev) ? ' · ' + esc(extraText(prev)) : '') : t('first')}</span></div>
     <div class="tctl"><button class="stage ${set ? '' : 'unset'} ${changed ? 'changed' : ''}" data-a="stage" ${d}><span>${set ? esc(entryLabel(e)) : t('stage.unset')}</span><span class="badges">${set ? streakChips(sk) : ''}</span></button>${canUp ? `<button class="mini" data-a="nextStep" ${d} aria-label="${t('stage.next')}" title="${t('stage.next')}">${icon('up')}</button>` : ''}</div>
     <div class="tmeta"><span class="rr">${rounds}×</span><input type="number" inputmode="numeric" min="0" max="999" class="reps" value="${esc(e.reps || '')}" placeholder="${t('reps.ph')}" data-c="reps" ${d}>
       <button class="kgbtn ${wOn ? 'on' : ''}" data-a="togW" ${d} title="${t('weighted')}">+kg</button>
@@ -299,25 +305,54 @@ A.stage = d => {
 const applyStep = (e, st) => { delete e.text; e.progId = st.id; e.label = st.label; };
 A.stageSet = d => {
   const e = getEntry(d.s, d.t, d.k), st = ladder(d.k).find(x => x.id === d.id);
-  applyStep(e, st); save(); closeSheet(); render();
+  applyStep(e, st); e.done = true; save(); closeSheet(); render();
 };
 F.stageText = (fd, d) => {
   const e = getEntry(d.s, d.t, d.k), text = String(fd.get('text') || '').trim();
   if (!text) { closeSheet(); return; }
-  delete e.progId; delete e.label; e.text = text; save(); closeSheet(); render();
+  delete e.progId; delete e.label; e.text = text; e.done = true; save(); closeSheet(); render();
 };
 A.stageClear = d => {
   const e = getEntry(d.s, d.t, d.k);
-  delete e.progId; delete e.label; delete e.text; save(); closeSheet(); render();
+  delete e.progId; delete e.label; delete e.text; e.done = false; save(); closeSheet(); render();
 };
 A.nextStep = d => {
   const e = getEntry(d.s, d.t, d.k), lad = ladder(d.k);
   const i = e.progId ? lad.findIndex(x => x.id === e.progId) : -1;
   if (i + 1 >= lad.length) return;
-  applyStep(e, lad[i + 1]); save(); render();
+  applyStep(e, lad[i + 1]); e.done = true; save(); render();
 };
-C.reps = (v, d) => { const n = parseInt(v, 10); getEntry(d.s, d.t, d.k).reps = Number.isFinite(n) && n > 0 ? String(n) : ''; save(); };
-C.weight = (v, d) => { getEntry(d.s, d.t, d.k).weight = v.trim(); save(); };
+// A row counts as done once its reps/weight/stage were set by hand (or ticked), not just prefilled from last time.
+function setRowDone(row, e, on) {
+  e.done = on;
+  row.classList.toggle('done', on);
+  row.querySelector('.donebtn').classList.toggle('on', on);
+  refreshDone();
+}
+function refreshDone() {
+  let total = 0, done = 0;
+  document.querySelectorAll('.item').forEach(it => {
+    const rows = it.querySelectorAll('.trow'), d = it.querySelectorAll('.trow.done').length;
+    const c = it.querySelector('.cnt');
+    if (c) c.textContent = `${d}/${rows.length}`;
+    total += rows.length; done += d;
+  });
+  const bc = document.querySelector('.block-h.acc .bc');
+  if (bc && total) bc.textContent = `${done}/${total}`;
+}
+C.reps = (v, d, el) => {
+  const e = getEntry(d.s, d.t, d.k), n = parseInt(v, 10);
+  e.reps = Number.isFinite(n) && n > 0 ? String(n) : '';
+  if (e.reps) setRowDone(el.closest('.trow'), e, true);
+  save();
+};
+C.weight = (v, d, el) => {
+  const e = getEntry(d.s, d.t, d.k);
+  e.weight = v.trim();
+  if (e.weight) setRowDone(el.closest('.trow'), e, true);
+  save();
+};
+A.togDone = (d, el) => { const e = getEntry(d.s, d.t, d.k); setRowDone(el.closest('.trow'), e, !e.done); save(); };
 C.note = (v, d) => { getEntry(d.s, d.t, d.k).note = v.trim(); save(); };
 A.togW = (d, el) => {
   const e = getEntry(d.s, d.t, d.k);

@@ -418,3 +418,16 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   .join .btn:first-child { border-left: 0; }
   .join .btn:last-child { border-right: 0; }
 }
+
+/* ---------- log: exercise bands and done rows ---------- */
+.block-b .item { padding: 0 0 4px; }
+.block-b .item + .item { border-top: 0; margin-top: 10px; }
+.block-b .item-h { background: var(--surface2); border-left: 4px solid var(--accent); margin: 0 -10px 2px; padding: 7px 10px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.block-b .item-n { font-size: 1.06rem; }
+.cnt { font-size: .78rem; color: var(--ink2); font-weight: 700; margin-left: auto; padding-left: 8px; font-variant-numeric: tabular-nums; }
+.block-h.acc .cnt { margin-left: 0; padding: 0 6px; }
+.trow.done { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.tn-l { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.donebtn { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); color: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; flex: none; }
+.donebtn .i { width: 14px; height: 14px; stroke-width: 3; }
+.donebtn.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
