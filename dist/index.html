@@ -138,6 +138,9 @@ label.f > input, label.f > select, label.f > textarea { margin-top: 3px; font-we
 .list > * + * { border-top: 1px solid var(--line); }
 .list-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; min-height: 44px; cursor: pointer; width: 100%; text-align: left; background: none; border: 0; }
 .list-row .grow { flex: 1; min-width: 0; }
+.rows { display: grid; gap: 6px; margin-bottom: 8px; }
+.rows .list-row { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 10px; }
+.rows > p { margin: 0; }
 .empty-state { text-align: center; padding: 18px 8px; color: var(--ink2); }
 .empty-state h2 { color: var(--ink); }
 .steps { text-align: left; display: inline-block; margin: 0 0 10px; padding-left: 1.1rem; }
@@ -311,10 +314,12 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 /* ---------- mobile: edge-to-edge ---------- */
 @media (max-width: 559px) {
   .page { padding: 0 0 6px; max-width: none; }
-  .page > *:not(.card):not(.blocks):not(.matrix-wrap):not(.brief-item):not(.cards):not(.tm):not(.full):not(.join) { padding-left: 8px; padding-right: 8px; }
+  .page > *:not(.card):not(.blocks):not(.matrix-wrap):not(.brief-item):not(.cards):not(.tm):not(.full):not(.join):not(.rows) { padding-left: 8px; padding-right: 8px; }
   .page > .card, .blocks .block, .brief-item, .cards .card, .matrix-wrap {
     border-radius: 0; border-left: 0; border-right: 0; margin-bottom: 6px;
   }
+  .rows .list-row { border-radius: 0; border-left: 0; border-right: 0; }
+  .btn.full { border-radius: 0; border-left: 0; border-right: 0; margin-bottom: 6px; }
   .cards { gap: 0; }
   .cards .card { margin-bottom: 0; border-top: 0; }
   .blocks { gap: 6px; }
@@ -1161,7 +1166,7 @@ F.saveInterval = (fd, d) => {
 };
 
 // ----- exercise picker (multi-select), shared by blocks, templates and the planner -----
-// conf: { title, allowText, allowNew, kinds: 'strength'|'all', have: () => Set of ids already present, add: (ids, texts) => void }
+// conf: { title, allowText, allowNew, names?: () => suggested free names (replaces the library list), have: () => Set of ids already present, add: (ids, texts) => void }
 const existingKeys = c => new Set(c.blocks.filter(x => x.type === 'strength').flatMap(x => x.items.map(ek)));
 function openPicker(conf) {
   ui.pick = { conf, sel: [], texts: [] };
@@ -1172,7 +1177,7 @@ function openPicker(conf) {
 A.addItem = d => {
   const b = findBlock(getCtx(d.ctx), d.b);
   openPicker({
-    title: t('item.add'), allowText: true, allowNew: b.type === 'strength', kinds: b.type === 'interval' ? 'all' : 'strength',
+    title: t('item.add'), allowText: true, allowNew: b.type === 'strength', names: b.type === 'interval' ? intervalNames : null,
     have: () => (b.type === 'strength' ? existingKeys(getCtx(d.ctx)) : new Set()),
     add: (ids, texts) => {
       const c = getCtx(d.ctx), blk = findBlock(c, d.b), have = existingKeys(c);
@@ -1187,14 +1192,28 @@ A.addItem = d => {
     },
   });
 };
+// Names used in earlier interval blocks, most used first (interval exercises are not tracked, so they stay free text).
+function intervalNames() {
+  const cnt = new Map();
+  for (const s of db.sessions) for (const b of s.blocks) if (b.type === 'interval') for (const it of b.items) { const n = itemName(it); cnt.set(n, (cnt.get(n) || 0) + 1); }
+  return [...cnt.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], locale())).map(x => x[0]);
+}
 function pickResults(q) {
   const conf = ui.pick.conf, nq = norm(q), have = conf.have();
-  const list = db.exercises.filter(x => (conf.kinds === 'all' || x.kind === 'strength') && (!nq || norm(x.name).includes(nq))).sort(byName);
-  let out = list.map(x => {
-    const off = have.has(x.id);
-    return `<label class="check ${off ? 'off' : ''}"><input type="checkbox" data-c="pickToggle" data-id="${x.id}" ${off ? 'disabled' : ''} ${ui.pick.sel.includes(x.id) ? 'checked' : ''}> ${esc(x.name)}${off ? `<span class="tag">${t('pick.exists')}</span>` : ''}</label>`;
-  }).join('');
-  if (nq && !db.exercises.some(x => norm(x.name) === nq)) {
+  let out, known;
+  if (conf.names) {
+    const all = conf.names();
+    known = all.some(n => norm(n) === nq);
+    out = all.filter(n => !nq || norm(n).includes(nq)).map(n => `<label class="check"><input type="checkbox" data-c="pickToggleName" data-name="${esc(n)}" ${ui.pick.texts.some(y => norm(y) === norm(n)) ? 'checked' : ''}> ${esc(n)}</label>`).join('');
+  } else {
+    const list = db.exercises.filter(x => !nq || norm(x.name).includes(nq)).sort(byName);
+    known = db.exercises.some(x => norm(x.name) === nq);
+    out = list.map(x => {
+      const off = have.has(x.id);
+      return `<label class="check ${off ? 'off' : ''}"><input type="checkbox" data-c="pickToggle" data-id="${x.id}" ${off ? 'disabled' : ''} ${ui.pick.sel.includes(x.id) ? 'checked' : ''}> ${esc(x.name)}${off ? `<span class="tag">${t('pick.exists')}</span>` : ''}</label>`;
+    }).join('');
+  }
+  if (nq && !known) {
     if (conf.allowText) out += `<button class="pick-add" data-a="pickText">${icon('plus')} ${t('pick.text', { q: esc(q.trim()) })}</button>`;
     if (conf.allowNew) out += `<button class="pick-add" data-a="pickNew">${icon('plus')} ${t('pick.new', { q: esc(q.trim()) })}</button>`;
   }
@@ -1212,17 +1231,22 @@ C.pickToggle = (on, d) => {
   if (on && i < 0) s.push(d.id); else if (!on && i >= 0) s.splice(i, 1);
   pickRefresh();
 };
+C.pickToggleName = (on, d) => {
+  const tx = ui.pick.texts, i = tx.findIndex(y => norm(y) === norm(d.name));
+  if (on && i < 0) tx.push(d.name); else if (!on && i >= 0) tx.splice(i, 1);
+  pickRefresh();
+};
 // Free text: several names can be typed at once, separated by commas or new lines.
 A.pickText = () => {
   const q = $('#pickQ');
   q.value.split(/[,\n]/).map(x => x.trim()).filter(Boolean).forEach(x => { if (!ui.pick.texts.some(y => norm(y) === norm(x))) ui.pick.texts.push(x); });
   q.value = ''; $('#pickRes').innerHTML = pickResults(''); pickRefresh(); q.focus();
 };
-A.pickUntext = d => { ui.pick.texts.splice(+d.n, 1); pickRefresh(); };
+A.pickUntext = d => { ui.pick.texts.splice(+d.n, 1); pickRefresh(); $('#pickRes').innerHTML = pickResults($('#pickQ').value); };
 A.pickNew = () => {
   const q = $('#pickQ'), name = q.value.trim();
   if (!name) return;
-  const ex = { id: uid(), name, kind: 'strength', steps: [] };
+  const ex = { id: uid(), name, steps: [] };
   db.exercises.push(ex); save();
   ui.pick.sel.push(ex.id);
   q.value = ''; $('#pickRes').innerHTML = pickResults(''); pickRefresh();
@@ -1426,7 +1450,7 @@ A.planLast = () => {
   render();
 };
 A.planAdd = () => openPicker({
-  title: t('plan.add'), allowText: false, allowNew: true, kinds: 'strength',
+  title: t('plan.add'), allowText: false, allowNew: true,
   have: () => new Set(planPool()),
   add: ids => {
     for (const id of ids) {
@@ -1499,23 +1523,23 @@ V.manage = ([tab = 'trainees']) => {
   const nav = `<nav class="tabs">${tabs.map(x => `<a class="${x === tab ? 'on' : ''}" href="#/manage/${x}">${t('tab.' + x)}</a>`).join('')}</nav>`;
   let body;
   if (tab === 'groups') {
-    body = `<div class="card list">${[...db.groups].sort(byName).map(g => `<button class="list-row" data-a="editGroup" data-id="${g.id}"><span class="grow"><b>${esc(g.name)}</b><div class="muted">${t('n.members', { n: activeMembers(g).length })}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
+    body = `<div class="rows">${[...db.groups].sort(byName).map(g => `<button class="list-row" data-a="editGroup" data-id="${g.id}"><span class="grow"><b>${esc(g.name)}</b><div class="muted">${t('n.members', { n: activeMembers(g).length })}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
       <button class="btn primary full" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
   } else if (tab === 'templates') {
-    body = `<div class="card list">${[...db.templates].sort(byName).map(x => `<a class="list-row" href="#/template/${x.id}"><span class="grow"><b>${esc(x.name)}</b><div class="muted">${t('n.exercises', { n: x.exIds.length })}${db.groups.some(g => g.templateId === x.id) ? ' · ' + esc(db.groups.filter(g => g.templateId === x.id).map(g => g.name).join(', ')) : ''}</div></span>${icon('edit')}</a>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
+    body = `<div class="rows">${[...db.templates].sort(byName).map(x => `<a class="list-row" href="#/template/${x.id}"><span class="grow"><b>${esc(x.name)}</b><div class="muted">${t('n.exercises', { n: x.exIds.length })}${db.groups.some(g => g.templateId === x.id) ? ' · ' + esc(db.groups.filter(g => g.templateId === x.id).map(g => g.name).join(', ')) : ''}</div></span>${icon('edit')}</a>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
       <p class="muted">${t('tpl.help')}</p><button class="btn primary full" data-a="newTemplate">${icon('plus')} ${t('tpl.new')}</button>`;
   } else if (tab === 'exercises') {
-    body = `<input type="search" data-i="exSearch" placeholder="${t('search')}" style="margin-bottom:12px"><div class="card list" id="exList">${exList('')}</div>
+    body = `<input type="search" data-i="exSearch" placeholder="${t('search')}" style="margin-bottom:12px"><div class="rows" id="exList">${exList('')}</div>
       <button class="btn primary full" data-a="newExercise">${icon('plus')} ${t('ex.new')}</button>`;
   } else {
-    body = `<div class="card list">${[...db.trainees].sort(byName).map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}"><span class="grow"><b>${esc(x.name)}</b>${x.active === false ? `<span class="tag">${t('archived')}</span>` : ''}<div class="muted">${esc(db.groups.filter(g => g.traineeIds.includes(x.id)).map(g => g.name).join(', ') || t('nogroup'))}${x.note ? ' · ' + esc(x.note) : ''}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
+    body = `<div class="rows">${[...db.trainees].sort(byName).map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}"><span class="grow"><b>${esc(x.name)}</b>${x.active === false ? `<span class="tag">${t('archived')}</span>` : ''}<div class="muted">${esc(db.groups.filter(g => g.traineeIds.includes(x.id)).map(g => g.name).join(', ') || t('nogroup'))}${x.note ? ' · ' + esc(x.note) : ''}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
       <button class="btn primary full" data-a="editTrainee">${icon('plus')} ${t('trainee.new')}</button>`;
   }
   return { html: header(t('nav.manage')) + nav + `<div class="page">${body}</div>` };
 };
 function exList(q) {
   const nq = norm(q);
-  return [...db.exercises].filter(x => !nq || norm(x.name).includes(nq)).sort(byName).map(x => `<a class="list-row" href="#/exercise/${x.id}"><span class="grow"><b>${esc(x.name)}</b><span class="tag">${t('kind.' + x.kind)}</span>${x.kind === 'strength' ? `<div class="muted">${t('n.steps', { n: x.steps.length })}</div>` : ''}</span>${icon('edit')}</a>`).join('') || `<p class="muted">${t('nodata')}</p>`;
+  return [...db.exercises].filter(x => !nq || norm(x.name).includes(nq)).sort(byName).map(x => `<a class="list-row" href="#/exercise/${x.id}"><span class="grow"><b>${esc(x.name)}</b><div class="muted">${t('n.steps', { n: x.steps.length })}</div></span>${icon('edit')}</a>`).join('') || `<p class="muted">${t('nodata')}</p>`;
 }
 I.exSearch = v => { $('#exList').innerHTML = exList(v); };
 
@@ -1568,28 +1592,26 @@ A.delGroup = ({ id }) => confirmBox(t('group.delq'), t('delete'), () => { delete
 
 // ---------- exercise editor ----------
 A.newExercise = () => promptBox(t('ex.new'), t('name'), '', name => {
-  const ex = { id: uid(), name, kind: 'strength', steps: [] };
+  const ex = { id: uid(), name, steps: [] };
   db.exercises.push(ex); save(); navigate('/exercise/' + ex.id);
 });
 
 V.exercise = ([id]) => {
   const ex = getExercise(id);
   if (!ex) return notFound();
-  const strength = ex.kind === 'strength';
   const steps = ex.steps.map((s, i) => `<div class="step-edit"><span class="n">${i + 1}</span><input type="text" value="${esc(s.label)}" data-c="stepLabel" data-id="${ex.id}" data-st="${s.id}"><span class="item-a">
     <button class="icon-btn sm" data-a="stepMove" data-id="${ex.id}" data-st="${s.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="${t('up')}">${icon('up')}</button>
     <button class="icon-btn sm" data-a="stepMove" data-id="${ex.id}" data-st="${s.id}" data-dir="1" ${i === ex.steps.length - 1 ? 'disabled' : ''} aria-label="${t('down')}">${icon('down')}</button>
     <button class="icon-btn sm" data-a="stepDel" data-id="${ex.id}" data-st="${s.id}" aria-label="${t('delete')}">${icon('x')}</button></span></div>`).join('');
   const body = `<div class="card"><label class="f">${t('name')}<input type="text" value="${esc(ex.name)}" data-c="exName" data-id="${ex.id}"></label>
-    <div class="muted" style="margin-bottom:6px">${t('ex.kind')}</div><div class="seg">${['strength', 'other'].map(k => `<button class="${ex.kind === k ? 'on' : ''}" data-a="exKind" data-id="${ex.id}" data-k="${k}">${t('kind.' + k)}</button>`).join('')}</div></div>
-    ${strength ? `<div class="card"><h2>${t('ex.steps')}</h2><p class="muted">${t('ex.steps.help')}</p>${steps || `<p class="muted">${t('ex.nosteps')}</p>`}
+    </div>
+    <div class="card"><h2>${t('ex.steps')}</h2><p class="muted">${t('ex.steps.help')}</p>${steps || `<p class="muted">${t('ex.nosteps')}</p>`}
       <form data-f="addStep" data-id="${ex.id}" class="row" style="flex-wrap:nowrap"><input type="text" name="label" placeholder="${t('ex.step.ph')}" autocomplete="off"><button class="btn primary">${icon('plus')}</button></form>
-      <details><summary class="muted" style="cursor:pointer">${t('ex.bulk')}</summary><form data-f="addSteps" data-id="${ex.id}"><textarea name="labels" placeholder="${t('ex.bulk.ph')}"></textarea><div class="row end"><button class="btn">${t('ex.bulk.add')}</button></div></form></details></div>` : `<p class="muted">${t('ex.other.help')}</p>`}
+      <details><summary class="muted" style="cursor:pointer">${t('ex.bulk')}</summary><form data-f="addSteps" data-id="${ex.id}"><textarea name="labels" placeholder="${t('ex.bulk.ph')}"></textarea><div class="row end"><button class="btn">${t('ex.bulk.add')}</button></div></form></details></div>
     <div class="row end"><button class="btn ghost-danger" data-a="delExercise" data-id="${ex.id}">${icon('trash')} ${t('ex.delete')}</button></div>`;
   return { html: header(ex.name, { back: '/manage/exercises' }) + `<div class="page">${body}</div>` };
 };
 C.exName = (v, d) => { const n = v.trim(); if (n) { getExercise(d.id).name = n; save(); } else render(); };
-A.exKind = d => { getExercise(d.id).kind = d.k; save(); render(); };
 C.stepLabel = (v, d) => { const s = getExercise(d.id).steps.find(x => x.id === d.st); if (v.trim()) { s.label = v.trim(); save(); } else render(); };
 A.stepMove = d => { const ex = getExercise(d.id); move(ex.steps, ex.steps.findIndex(s => s.id === d.st), +d.dir); save(); render(); };
 A.stepDel = d => {
@@ -1636,7 +1658,7 @@ C.tplName = (v, d) => { if (v.trim()) { getTemplate(d.id).name = v.trim(); save(
 A.tplMove = d => { const tp = getTemplate(d.id); move(tp.exIds, tp.exIds.indexOf(d.x), +d.dir); save(); render(); };
 A.tplDel = d => { const tp = getTemplate(d.id); tp.exIds = tp.exIds.filter(x => x !== d.x); save(); render(); };
 A.tplAdd = ({ id }) => openPicker({
-  title: t('tpl.add'), allowText: false, allowNew: true, kinds: 'strength',
+  title: t('tpl.add'), allowText: false, allowNew: true,
   have: () => new Set(getTemplate(id).exIds),
   add: ids => { const tp = getTemplate(id); ids.forEach(x => { if (!tp.exIds.includes(x)) tp.exIds.push(x); }); save(); render(); },
 });

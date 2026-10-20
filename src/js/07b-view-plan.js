@@ -93,7 +93,7 @@ A.planLast = () => {
   render();
 };
 A.planAdd = () => openPicker({
-  title: t('plan.add'), allowText: false, allowNew: true, kinds: 'strength',
+  title: t('plan.add'), allowText: false, allowNew: true,
   have: () => new Set(planPool()),
   add: ids => {
     for (const id of ids) {

@@ -32,23 +32,23 @@ V.manage = ([tab = 'trainees']) => {
   const nav = `<nav class="tabs">${tabs.map(x => `<a class="${x === tab ? 'on' : ''}" href="#/manage/${x}">${t('tab.' + x)}</a>`).join('')}</nav>`;
   let body;
   if (tab === 'groups') {
-    body = `<div class="card list">${[...db.groups].sort(byName).map(g => `<button class="list-row" data-a="editGroup" data-id="${g.id}"><span class="grow"><b>${esc(g.name)}</b><div class="muted">${t('n.members', { n: activeMembers(g).length })}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
+    body = `<div class="rows">${[...db.groups].sort(byName).map(g => `<button class="list-row" data-a="editGroup" data-id="${g.id}"><span class="grow"><b>${esc(g.name)}</b><div class="muted">${t('n.members', { n: activeMembers(g).length })}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
       <button class="btn primary full" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
   } else if (tab === 'templates') {
-    body = `<div class="card list">${[...db.templates].sort(byName).map(x => `<a class="list-row" href="#/template/${x.id}"><span class="grow"><b>${esc(x.name)}</b><div class="muted">${t('n.exercises', { n: x.exIds.length })}${db.groups.some(g => g.templateId === x.id) ? ' · ' + esc(db.groups.filter(g => g.templateId === x.id).map(g => g.name).join(', ')) : ''}</div></span>${icon('edit')}</a>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
+    body = `<div class="rows">${[...db.templates].sort(byName).map(x => `<a class="list-row" href="#/template/${x.id}"><span class="grow"><b>${esc(x.name)}</b><div class="muted">${t('n.exercises', { n: x.exIds.length })}${db.groups.some(g => g.templateId === x.id) ? ' · ' + esc(db.groups.filter(g => g.templateId === x.id).map(g => g.name).join(', ')) : ''}</div></span>${icon('edit')}</a>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
       <p class="muted">${t('tpl.help')}</p><button class="btn primary full" data-a="newTemplate">${icon('plus')} ${t('tpl.new')}</button>`;
   } else if (tab === 'exercises') {
-    body = `<input type="search" data-i="exSearch" placeholder="${t('search')}" style="margin-bottom:12px"><div class="card list" id="exList">${exList('')}</div>
+    body = `<input type="search" data-i="exSearch" placeholder="${t('search')}" style="margin-bottom:12px"><div class="rows" id="exList">${exList('')}</div>
       <button class="btn primary full" data-a="newExercise">${icon('plus')} ${t('ex.new')}</button>`;
   } else {
-    body = `<div class="card list">${[...db.trainees].sort(byName).map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}"><span class="grow"><b>${esc(x.name)}</b>${x.active === false ? `<span class="tag">${t('archived')}</span>` : ''}<div class="muted">${esc(db.groups.filter(g => g.traineeIds.includes(x.id)).map(g => g.name).join(', ') || t('nogroup'))}${x.note ? ' · ' + esc(x.note) : ''}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
+    body = `<div class="rows">${[...db.trainees].sort(byName).map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}"><span class="grow"><b>${esc(x.name)}</b>${x.active === false ? `<span class="tag">${t('archived')}</span>` : ''}<div class="muted">${esc(db.groups.filter(g => g.traineeIds.includes(x.id)).map(g => g.name).join(', ') || t('nogroup'))}${x.note ? ' · ' + esc(x.note) : ''}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
       <button class="btn primary full" data-a="editTrainee">${icon('plus')} ${t('trainee.new')}</button>`;
   }
   return { html: header(t('nav.manage')) + nav + `<div class="page">${body}</div>` };
 };
 function exList(q) {
   const nq = norm(q);
-  return [...db.exercises].filter(x => !nq || norm(x.name).includes(nq)).sort(byName).map(x => `<a class="list-row" href="#/exercise/${x.id}"><span class="grow"><b>${esc(x.name)}</b><span class="tag">${t('kind.' + x.kind)}</span>${x.kind === 'strength' ? `<div class="muted">${t('n.steps', { n: x.steps.length })}</div>` : ''}</span>${icon('edit')}</a>`).join('') || `<p class="muted">${t('nodata')}</p>`;
+  return [...db.exercises].filter(x => !nq || norm(x.name).includes(nq)).sort(byName).map(x => `<a class="list-row" href="#/exercise/${x.id}"><span class="grow"><b>${esc(x.name)}</b><div class="muted">${t('n.steps', { n: x.steps.length })}</div></span>${icon('edit')}</a>`).join('') || `<p class="muted">${t('nodata')}</p>`;
 }
 I.exSearch = v => { $('#exList').innerHTML = exList(v); };
 
@@ -101,28 +101,26 @@ A.delGroup = ({ id }) => confirmBox(t('group.delq'), t('delete'), () => { delete
 
 // ---------- exercise editor ----------
 A.newExercise = () => promptBox(t('ex.new'), t('name'), '', name => {
-  const ex = { id: uid(), name, kind: 'strength', steps: [] };
+  const ex = { id: uid(), name, steps: [] };
   db.exercises.push(ex); save(); navigate('/exercise/' + ex.id);
 });
 
 V.exercise = ([id]) => {
   const ex = getExercise(id);
   if (!ex) return notFound();
-  const strength = ex.kind === 'strength';
   const steps = ex.steps.map((s, i) => `<div class="step-edit"><span class="n">${i + 1}</span><input type="text" value="${esc(s.label)}" data-c="stepLabel" data-id="${ex.id}" data-st="${s.id}"><span class="item-a">
     <button class="icon-btn sm" data-a="stepMove" data-id="${ex.id}" data-st="${s.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="${t('up')}">${icon('up')}</button>
     <button class="icon-btn sm" data-a="stepMove" data-id="${ex.id}" data-st="${s.id}" data-dir="1" ${i === ex.steps.length - 1 ? 'disabled' : ''} aria-label="${t('down')}">${icon('down')}</button>
     <button class="icon-btn sm" data-a="stepDel" data-id="${ex.id}" data-st="${s.id}" aria-label="${t('delete')}">${icon('x')}</button></span></div>`).join('');
   const body = `<div class="card"><label class="f">${t('name')}<input type="text" value="${esc(ex.name)}" data-c="exName" data-id="${ex.id}"></label>
-    <div class="muted" style="margin-bottom:6px">${t('ex.kind')}</div><div class="seg">${['strength', 'other'].map(k => `<button class="${ex.kind === k ? 'on' : ''}" data-a="exKind" data-id="${ex.id}" data-k="${k}">${t('kind.' + k)}</button>`).join('')}</div></div>
-    ${strength ? `<div class="card"><h2>${t('ex.steps')}</h2><p class="muted">${t('ex.steps.help')}</p>${steps || `<p class="muted">${t('ex.nosteps')}</p>`}
+    </div>
+    <div class="card"><h2>${t('ex.steps')}</h2><p class="muted">${t('ex.steps.help')}</p>${steps || `<p class="muted">${t('ex.nosteps')}</p>`}
       <form data-f="addStep" data-id="${ex.id}" class="row" style="flex-wrap:nowrap"><input type="text" name="label" placeholder="${t('ex.step.ph')}" autocomplete="off"><button class="btn primary">${icon('plus')}</button></form>
-      <details><summary class="muted" style="cursor:pointer">${t('ex.bulk')}</summary><form data-f="addSteps" data-id="${ex.id}"><textarea name="labels" placeholder="${t('ex.bulk.ph')}"></textarea><div class="row end"><button class="btn">${t('ex.bulk.add')}</button></div></form></details></div>` : `<p class="muted">${t('ex.other.help')}</p>`}
+      <details><summary class="muted" style="cursor:pointer">${t('ex.bulk')}</summary><form data-f="addSteps" data-id="${ex.id}"><textarea name="labels" placeholder="${t('ex.bulk.ph')}"></textarea><div class="row end"><button class="btn">${t('ex.bulk.add')}</button></div></form></details></div>
     <div class="row end"><button class="btn ghost-danger" data-a="delExercise" data-id="${ex.id}">${icon('trash')} ${t('ex.delete')}</button></div>`;
   return { html: header(ex.name, { back: '/manage/exercises' }) + `<div class="page">${body}</div>` };
 };
 C.exName = (v, d) => { const n = v.trim(); if (n) { getExercise(d.id).name = n; save(); } else render(); };
-A.exKind = d => { getExercise(d.id).kind = d.k; save(); render(); };
 C.stepLabel = (v, d) => { const s = getExercise(d.id).steps.find(x => x.id === d.st); if (v.trim()) { s.label = v.trim(); save(); } else render(); };
 A.stepMove = d => { const ex = getExercise(d.id); move(ex.steps, ex.steps.findIndex(s => s.id === d.st), +d.dir); save(); render(); };
 A.stepDel = d => {
@@ -169,7 +167,7 @@ C.tplName = (v, d) => { if (v.trim()) { getTemplate(d.id).name = v.trim(); save(
 A.tplMove = d => { const tp = getTemplate(d.id); move(tp.exIds, tp.exIds.indexOf(d.x), +d.dir); save(); render(); };
 A.tplDel = d => { const tp = getTemplate(d.id); tp.exIds = tp.exIds.filter(x => x !== d.x); save(); render(); };
 A.tplAdd = ({ id }) => openPicker({
-  title: t('tpl.add'), allowText: false, allowNew: true, kinds: 'strength',
+  title: t('tpl.add'), allowText: false, allowNew: true,
   have: () => new Set(getTemplate(id).exIds),
   add: ids => { const tp = getTemplate(id); ids.forEach(x => { if (!tp.exIds.includes(x)) tp.exIds.push(x); }); save(); render(); },
 });

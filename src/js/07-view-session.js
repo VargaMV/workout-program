@@ -89,7 +89,7 @@ F.saveInterval = (fd, d) => {
 };
 
 // ----- exercise picker (multi-select), shared by blocks, templates and the planner -----
-// conf: { title, allowText, allowNew, kinds: 'strength'|'all', have: () => Set of ids already present, add: (ids, texts) => void }
+// conf: { title, allowText, allowNew, names?: () => suggested free names (replaces the library list), have: () => Set of ids already present, add: (ids, texts) => void }
 const existingKeys = c => new Set(c.blocks.filter(x => x.type === 'strength').flatMap(x => x.items.map(ek)));
 function openPicker(conf) {
   ui.pick = { conf, sel: [], texts: [] };
@@ -100,7 +100,7 @@ function openPicker(conf) {
 A.addItem = d => {
   const b = findBlock(getCtx(d.ctx), d.b);
   openPicker({
-    title: t('item.add'), allowText: true, allowNew: b.type === 'strength', kinds: b.type === 'interval' ? 'all' : 'strength',
+    title: t('item.add'), allowText: true, allowNew: b.type === 'strength', names: b.type === 'interval' ? intervalNames : null,
     have: () => (b.type === 'strength' ? existingKeys(getCtx(d.ctx)) : new Set()),
     add: (ids, texts) => {
       const c = getCtx(d.ctx), blk = findBlock(c, d.b), have = existingKeys(c);
@@ -115,14 +115,28 @@ A.addItem = d => {
     },
   });
 };
+// Names used in earlier interval blocks, most used first (interval exercises are not tracked, so they stay free text).
+function intervalNames() {
+  const cnt = new Map();
+  for (const s of db.sessions) for (const b of s.blocks) if (b.type === 'interval') for (const it of b.items) { const n = itemName(it); cnt.set(n, (cnt.get(n) || 0) + 1); }
+  return [...cnt.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], locale())).map(x => x[0]);
+}
 function pickResults(q) {
   const conf = ui.pick.conf, nq = norm(q), have = conf.have();
-  const list = db.exercises.filter(x => (conf.kinds === 'all' || x.kind === 'strength') && (!nq || norm(x.name).includes(nq))).sort(byName);
-  let out = list.map(x => {
-    const off = have.has(x.id);
-    return `<label class="check ${off ? 'off' : ''}"><input type="checkbox" data-c="pickToggle" data-id="${x.id}" ${off ? 'disabled' : ''} ${ui.pick.sel.includes(x.id) ? 'checked' : ''}> ${esc(x.name)}${off ? `<span class="tag">${t('pick.exists')}</span>` : ''}</label>`;
-  }).join('');
-  if (nq && !db.exercises.some(x => norm(x.name) === nq)) {
+  let out, known;
+  if (conf.names) {
+    const all = conf.names();
+    known = all.some(n => norm(n) === nq);
+    out = all.filter(n => !nq || norm(n).includes(nq)).map(n => `<label class="check"><input type="checkbox" data-c="pickToggleName" data-name="${esc(n)}" ${ui.pick.texts.some(y => norm(y) === norm(n)) ? 'checked' : ''}> ${esc(n)}</label>`).join('');
+  } else {
+    const list = db.exercises.filter(x => !nq || norm(x.name).includes(nq)).sort(byName);
+    known = db.exercises.some(x => norm(x.name) === nq);
+    out = list.map(x => {
+      const off = have.has(x.id);
+      return `<label class="check ${off ? 'off' : ''}"><input type="checkbox" data-c="pickToggle" data-id="${x.id}" ${off ? 'disabled' : ''} ${ui.pick.sel.includes(x.id) ? 'checked' : ''}> ${esc(x.name)}${off ? `<span class="tag">${t('pick.exists')}</span>` : ''}</label>`;
+    }).join('');
+  }
+  if (nq && !known) {
     if (conf.allowText) out += `<button class="pick-add" data-a="pickText">${icon('plus')} ${t('pick.text', { q: esc(q.trim()) })}</button>`;
     if (conf.allowNew) out += `<button class="pick-add" data-a="pickNew">${icon('plus')} ${t('pick.new', { q: esc(q.trim()) })}</button>`;
   }
@@ -140,17 +154,22 @@ C.pickToggle = (on, d) => {
   if (on && i < 0) s.push(d.id); else if (!on && i >= 0) s.splice(i, 1);
   pickRefresh();
 };
+C.pickToggleName = (on, d) => {
+  const tx = ui.pick.texts, i = tx.findIndex(y => norm(y) === norm(d.name));
+  if (on && i < 0) tx.push(d.name); else if (!on && i >= 0) tx.splice(i, 1);
+  pickRefresh();
+};
 // Free text: several names can be typed at once, separated by commas or new lines.
 A.pickText = () => {
   const q = $('#pickQ');
   q.value.split(/[,\n]/).map(x => x.trim()).filter(Boolean).forEach(x => { if (!ui.pick.texts.some(y => norm(y) === norm(x))) ui.pick.texts.push(x); });
   q.value = ''; $('#pickRes').innerHTML = pickResults(''); pickRefresh(); q.focus();
 };
-A.pickUntext = d => { ui.pick.texts.splice(+d.n, 1); pickRefresh(); };
+A.pickUntext = d => { ui.pick.texts.splice(+d.n, 1); pickRefresh(); $('#pickRes').innerHTML = pickResults($('#pickQ').value); };
 A.pickNew = () => {
   const q = $('#pickQ'), name = q.value.trim();
   if (!name) return;
-  const ex = { id: uid(), name, kind: 'strength', steps: [] };
+  const ex = { id: uid(), name, steps: [] };
   db.exercises.push(ex); save();
   ui.pick.sel.push(ex.id);
   q.value = ''; $('#pickRes').innerHTML = pickResults(''); pickRefresh();
