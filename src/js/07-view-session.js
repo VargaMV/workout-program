@@ -16,7 +16,7 @@ const dctx = (cs, b) => `data-ctx="${cs}" data-b="${b.id}"`;
 function blocksHtml(cs) {
   const c = getCtx(cs);
   const out = c.blocks.map((b, bi) => blockHtml(c, cs, b, bi)).join('');
-  return `<div class="blocks">${out}</div><div class="row">
+  return `<div class="blocks">${out}</div><div class="join">
     <button class="btn" data-a="addBlock" data-ctx="${cs}" data-type="strength">${icon('plus')} ${t('block.addStrength')}</button>
     <button class="btn" data-a="addBlock" data-ctx="${cs}" data-type="interval">${icon('plus')} ${t('block.addInterval')}</button></div>`;
 }
@@ -29,14 +29,12 @@ function blockHtml(c, cs, b, bi) {
     <button class="icon-btn sm" data-a="moveBlock" ${d} data-dir="1" ${bi === n - 1 ? 'disabled' : ''} aria-label="${t('down')}">${icon('down')}</button>
     <button class="icon-btn sm" data-a="delBlock" ${d} aria-label="${t('delete')}">${icon('trash')}</button></div></div>`;
   const items = b.items.map((it, ii) => strength ? strengthItemHtml(c, cs, b, it, ii) : intervalItemHtml(cs, b, it, ii)).join('');
-  let foot;
-  if (strength) {
-    foot = `<div class="row"><button class="btn small" data-a="addItem" ${d}>${icon('plus')} ${t('item.add')}</button>${c.kind === 's' && b.items.length ? `<a class="btn small primary" href="#/brief/${c.s.id}/${b.id}">${t('brief.open')}</a>` : ''}</div>`;
-  } else {
-    foot = `<div class="row"><button class="btn small" data-a="addItem" ${d}>${icon('plus')} ${t('item.add')}</button><a class="btn small primary" href="#/timer/${cs.replace(':', '/')}/${b.id}">${icon('timer')} ${t('timer.start')}</a></div>`;
-  }
+  const top = strength
+    ? (c.kind === 's' && b.items.length ? `<a class="block-top" href="#/brief/${c.s.id}/${b.id}">${t('brief.open')} ${icon('next')}</a>` : '')
+    : `<a class="block-top" href="#/timer/${cs.replace(':', '/')}/${b.id}">${icon('timer')} ${t('timer.start')}</a>`;
+  const foot = `<button class="block-f" data-a="addItem" ${d}>${icon('plus')} ${t('item.add')}</button>`;
   const sum = strength ? '' : `<div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}<button class="link-btn" data-a="editInterval" ${d}>${t('edit')}</button></div>`;
-  return `<section class="block ${strength ? '' : 'iv'}">${head}<div class="block-b">${sum}${items || `<p class="muted">${t('block.empty')}</p>`}${foot}</div></section>`;
+  return `<section class="block ${strength ? '' : 'iv'}">${head}${top}<div class="block-b">${sum}${items || `<p class="muted">${t('block.empty')}</p>`}${foot}</div></section>`;
 }
 
 function itemControls(cs, b, it, ii) {
@@ -100,7 +98,7 @@ F.saveInterval = (fd, d) => {
 const existingKeys = c => new Set(c.blocks.filter(x => x.type === 'strength').flatMap(x => x.items.map(ek)));
 A.addItem = d => {
   ui.pick = { ctx: d.ctx, b: d.b, sel: [], texts: [] };
-  openSheet(`<h2>${t('item.add')}</h2><input type="text" id="pickQ" data-i="pickSearch" placeholder="${t('pick.ph')}" autocomplete="off" autofocus>
+  openSheet(`<h2>${t('item.add')}</h2><input type="text" id="pickQ" data-i="pickSearch" placeholder="${t('pick.ph')}" autocomplete="off">
     <div id="pickRes" class="pick-res">${pickResults('')}</div><div id="pickSel" class="pick-sel"></div>
     <div class="row end"><button class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary" id="pickAdd" data-a="pickAdd" disabled>${t('pick.add', { n: 0 })}</button></div>`);
 };

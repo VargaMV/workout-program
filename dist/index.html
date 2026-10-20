@@ -2,7 +2,7 @@
 <html lang="hu">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="color-scheme" content="light dark">
 <title>Edzéskövető</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f8a5f'/%3E%3Cpath d='M14 40l12-16 8 10 6-7 10 13z' fill='%23fff'/%3E%3C/svg%3E">
@@ -36,10 +36,10 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; font-size: 14px; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
-  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font: 1rem/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 }
 body.noscroll { overflow: hidden; }
 a { color: inherit; text-decoration: none; }
@@ -180,6 +180,19 @@ table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
 .item-h { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
 .item-n { font-weight: 700; }
 .item-a { display: flex; }
+.block-top, .block-f {
+  display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 36px; padding: 0 10px;
+  border: 0; background: none; color: var(--accent); font-weight: 600; font-size: .92rem; cursor: pointer;
+}
+.block-top { background: var(--accent-soft); border-bottom: 1px solid var(--line); }
+.block.iv .block-top { background: color-mix(in srgb, var(--work) 14%, var(--surface)); color: var(--work); }
+.block-f { margin: 4px -10px -8px; width: calc(100% + 20px); border-top: 1px solid var(--line); }
+.block-top:active, .block-f:active { filter: brightness(.95); }
+.btn.full { display: flex; width: 100%; }
+.join { display: flex; margin: 0 0 8px; }
+.join .btn { flex: 1; border-radius: 0; }
+.join .btn:first-child { border-radius: var(--rs) 0 0 var(--rs); }
+.join .btn:last-child { border-radius: 0 var(--rs) var(--rs) 0; margin-left: -1px; }
 .trow { display: grid; grid-template-columns: 1fr; gap: 4px; padding: 5px 6px; margin-top: 4px; border-radius: var(--rs); background: var(--bg); }
 .trow .tn { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .trow .tn a { font-weight: 600; }
@@ -221,11 +234,14 @@ table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
 .tl-ent { display: flex; justify-content: space-between; gap: 8px; font-size: .85rem; padding: 1px 0; }
 
 /* ---------- sheet ---------- */
-.overlay { position: fixed; inset: 0; z-index: 50; background: rgba(8,10,12,.55); display: flex; align-items: flex-end; justify-content: center; }
+.overlay { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 50; background: rgba(8,10,12,.55); display: flex; align-items: flex-end; justify-content: center; }
 .sheet {
-  width: 100%; max-width: 560px; max-height: 90vh; max-height: 90dvh; overflow: auto;
+  width: 100%; max-width: 560px; max-height: 100%; overflow: auto; overscroll-behavior: contain;
   background: var(--surface); border-radius: 12px 12px 0 0; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
   box-shadow: 0 -8px 40px rgba(0,0,0,.3); animation: up .18s ease-out;
+}
+.sheet .row.end:last-child, .sheet .row.between:last-child {
+  position: sticky; bottom: -12px; background: var(--surface); padding: 8px 0 12px; margin: 0 0 -12px; z-index: 2;
 }
 @keyframes up { from { transform: translateY(24px); opacity: 0; } }
 .ladder { display: grid; gap: 4px; margin: 6px 0 10px; }
@@ -293,7 +309,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 /* ---------- mobile: edge-to-edge ---------- */
 @media (max-width: 559px) {
   .page { padding: 0 0 6px; max-width: none; }
-  .page > *:not(.card):not(.blocks):not(.matrix-wrap):not(.brief-item):not(.cards):not(.tm) { padding-left: 8px; padding-right: 8px; }
+  .page > *:not(.card):not(.blocks):not(.matrix-wrap):not(.brief-item):not(.cards):not(.tm):not(.full):not(.join) { padding-left: 8px; padding-right: 8px; }
   .page > .card, .blocks .block, .brief-item, .cards .card, .matrix-wrap {
     border-radius: 0; border-left: 0; border-right: 0; margin-bottom: 6px;
   }
@@ -313,6 +329,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   .trow { grid-template-columns: minmax(150px, 220px) 1fr; align-items: center; }
   .trow .tn { flex-direction: column; gap: 0; }
   .overlay { align-items: center; padding: 20px; }
+  .sheet { max-height: 92%; }
   .sheet { border-radius: 12px; }
 }
 @media (min-width: 900px) {
@@ -326,6 +343,11 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   .blocks { grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); align-items: start; }
   .matrix-wrap { max-height: calc(100vh - 140px); }
   .tm { min-height: calc(100vh - 110px); }
+}
+
+/* iOS zooms into inputs below 16px */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea { font-size: 16px !important; }
 }
 
 </style>
@@ -836,9 +858,21 @@ function openSheet(html) {
   el.addEventListener('pointerdown', e => { if (e.target === el) closeSheet(); });
   document.body.appendChild(el);
   document.body.classList.add('noscroll');
+  fitSheet();
   const f = el.querySelector('[autofocus]');
   if (f) setTimeout(() => f.focus(), 30);
 }
+// Keep the sheet inside the part of the screen not covered by the on-screen keyboard.
+function fitSheet() {
+  const o = $('.overlay'), v = window.visualViewport;
+  if (!o || !v) return;
+  o.style.top = v.offsetTop + 'px'; o.style.bottom = 'auto'; o.style.height = v.height + 'px';
+}
+document.addEventListener('focusin', e => {
+  if (!e.target.closest('.sheet') || !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  setTimeout(() => { fitSheet(); e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 250);
+});
+if (window.visualViewport) { visualViewport.addEventListener('resize', fitSheet); visualViewport.addEventListener('scroll', fitSheet); }
 function closeSheet() {
   const o = $('.overlay');
   if (o) o.remove();
@@ -893,7 +927,7 @@ V.home = () => {
     body = `<div class="cards">${gs.map(g => {
       const last = db.sessions.filter(s => s.groupId === g.id && s.date <= todayStr()).sort(sessionCmp).pop();
       return `<a class="card link" href="#/group/${g.id}"><div class="card-t">${esc(g.name)}</div><div class="muted">${t('n.members', { n: activeMembers(g).length })}${last ? ' · ' + t('last.session', { d: fmtDate(last.date) }) : ''}</div></a>`;
-    }).join('')}</div><button class="btn" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
+    }).join('')}</div><button class="btn full" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
   }
   return { html: header(t('nav.groups')) + backupBanner() + `<div class="page">${body}</div>` };
 };
@@ -994,7 +1028,7 @@ const dctx = (cs, b) => `data-ctx="${cs}" data-b="${b.id}"`;
 function blocksHtml(cs) {
   const c = getCtx(cs);
   const out = c.blocks.map((b, bi) => blockHtml(c, cs, b, bi)).join('');
-  return `<div class="blocks">${out}</div><div class="row">
+  return `<div class="blocks">${out}</div><div class="join">
     <button class="btn" data-a="addBlock" data-ctx="${cs}" data-type="strength">${icon('plus')} ${t('block.addStrength')}</button>
     <button class="btn" data-a="addBlock" data-ctx="${cs}" data-type="interval">${icon('plus')} ${t('block.addInterval')}</button></div>`;
 }
@@ -1007,14 +1041,12 @@ function blockHtml(c, cs, b, bi) {
     <button class="icon-btn sm" data-a="moveBlock" ${d} data-dir="1" ${bi === n - 1 ? 'disabled' : ''} aria-label="${t('down')}">${icon('down')}</button>
     <button class="icon-btn sm" data-a="delBlock" ${d} aria-label="${t('delete')}">${icon('trash')}</button></div></div>`;
   const items = b.items.map((it, ii) => strength ? strengthItemHtml(c, cs, b, it, ii) : intervalItemHtml(cs, b, it, ii)).join('');
-  let foot;
-  if (strength) {
-    foot = `<div class="row"><button class="btn small" data-a="addItem" ${d}>${icon('plus')} ${t('item.add')}</button>${c.kind === 's' && b.items.length ? `<a class="btn small primary" href="#/brief/${c.s.id}/${b.id}">${t('brief.open')}</a>` : ''}</div>`;
-  } else {
-    foot = `<div class="row"><button class="btn small" data-a="addItem" ${d}>${icon('plus')} ${t('item.add')}</button><a class="btn small primary" href="#/timer/${cs.replace(':', '/')}/${b.id}">${icon('timer')} ${t('timer.start')}</a></div>`;
-  }
+  const top = strength
+    ? (c.kind === 's' && b.items.length ? `<a class="block-top" href="#/brief/${c.s.id}/${b.id}">${t('brief.open')} ${icon('next')}</a>` : '')
+    : `<a class="block-top" href="#/timer/${cs.replace(':', '/')}/${b.id}">${icon('timer')} ${t('timer.start')}</a>`;
+  const foot = `<button class="block-f" data-a="addItem" ${d}>${icon('plus')} ${t('item.add')}</button>`;
   const sum = strength ? '' : `<div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}<button class="link-btn" data-a="editInterval" ${d}>${t('edit')}</button></div>`;
-  return `<section class="block ${strength ? '' : 'iv'}">${head}<div class="block-b">${sum}${items || `<p class="muted">${t('block.empty')}</p>`}${foot}</div></section>`;
+  return `<section class="block ${strength ? '' : 'iv'}">${head}${top}<div class="block-b">${sum}${items || `<p class="muted">${t('block.empty')}</p>`}${foot}</div></section>`;
 }
 
 function itemControls(cs, b, it, ii) {
@@ -1078,7 +1110,7 @@ F.saveInterval = (fd, d) => {
 const existingKeys = c => new Set(c.blocks.filter(x => x.type === 'strength').flatMap(x => x.items.map(ek)));
 A.addItem = d => {
   ui.pick = { ctx: d.ctx, b: d.b, sel: [], texts: [] };
-  openSheet(`<h2>${t('item.add')}</h2><input type="text" id="pickQ" data-i="pickSearch" placeholder="${t('pick.ph')}" autocomplete="off" autofocus>
+  openSheet(`<h2>${t('item.add')}</h2><input type="text" id="pickQ" data-i="pickSearch" placeholder="${t('pick.ph')}" autocomplete="off">
     <div id="pickRes" class="pick-res">${pickResults('')}</div><div id="pickSel" class="pick-sel"></div>
     <div class="row end"><button class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary" id="pickAdd" data-a="pickAdd" disabled>${t('pick.add', { n: 0 })}</button></div>`);
 };
@@ -1275,13 +1307,13 @@ V.manage = ([tab = 'trainees']) => {
   let body;
   if (tab === 'groups') {
     body = `<div class="card list">${[...db.groups].sort(byName).map(g => `<button class="list-row" data-a="editGroup" data-id="${g.id}"><span class="grow"><b>${esc(g.name)}</b><div class="muted">${t('n.members', { n: activeMembers(g).length })}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
-      <button class="btn primary" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
+      <button class="btn primary full" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
   } else if (tab === 'exercises') {
     body = `<input type="search" data-i="exSearch" placeholder="${t('search')}" style="margin-bottom:12px"><div class="card list" id="exList">${exList('')}</div>
-      <button class="btn primary" data-a="newExercise">${icon('plus')} ${t('ex.new')}</button>`;
+      <button class="btn primary full" data-a="newExercise">${icon('plus')} ${t('ex.new')}</button>`;
   } else {
     body = `<div class="card list">${[...db.trainees].sort(byName).map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}"><span class="grow"><b>${esc(x.name)}</b>${x.active === false ? `<span class="tag">${t('archived')}</span>` : ''}<div class="muted">${esc(db.groups.filter(g => g.traineeIds.includes(x.id)).map(g => g.name).join(', ') || t('nogroup'))}${x.note ? ' · ' + esc(x.note) : ''}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
-      <button class="btn primary" data-a="editTrainee">${icon('plus')} ${t('trainee.new')}</button>`;
+      <button class="btn primary full" data-a="editTrainee">${icon('plus')} ${t('trainee.new')}</button>`;
   }
   return { html: header(t('nav.manage')) + nav + `<div class="page">${body}</div>` };
 };

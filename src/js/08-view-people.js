@@ -33,13 +33,13 @@ V.manage = ([tab = 'trainees']) => {
   let body;
   if (tab === 'groups') {
     body = `<div class="card list">${[...db.groups].sort(byName).map(g => `<button class="list-row" data-a="editGroup" data-id="${g.id}"><span class="grow"><b>${esc(g.name)}</b><div class="muted">${t('n.members', { n: activeMembers(g).length })}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
-      <button class="btn primary" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
+      <button class="btn primary full" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
   } else if (tab === 'exercises') {
     body = `<input type="search" data-i="exSearch" placeholder="${t('search')}" style="margin-bottom:12px"><div class="card list" id="exList">${exList('')}</div>
-      <button class="btn primary" data-a="newExercise">${icon('plus')} ${t('ex.new')}</button>`;
+      <button class="btn primary full" data-a="newExercise">${icon('plus')} ${t('ex.new')}</button>`;
   } else {
     body = `<div class="card list">${[...db.trainees].sort(byName).map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}"><span class="grow"><b>${esc(x.name)}</b>${x.active === false ? `<span class="tag">${t('archived')}</span>` : ''}<div class="muted">${esc(db.groups.filter(g => g.traineeIds.includes(x.id)).map(g => g.name).join(', ') || t('nogroup'))}${x.note ? ' · ' + esc(x.note) : ''}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
-      <button class="btn primary" data-a="editTrainee">${icon('plus')} ${t('trainee.new')}</button>`;
+      <button class="btn primary full" data-a="editTrainee">${icon('plus')} ${t('trainee.new')}</button>`;
   }
   return { html: header(t('nav.manage')) + nav + `<div class="page">${body}</div>` };
 };

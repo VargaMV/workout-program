@@ -25,7 +25,7 @@ V.home = () => {
     body = `<div class="cards">${gs.map(g => {
       const last = db.sessions.filter(s => s.groupId === g.id && s.date <= todayStr()).sort(sessionCmp).pop();
       return `<a class="card link" href="#/group/${g.id}"><div class="card-t">${esc(g.name)}</div><div class="muted">${t('n.members', { n: activeMembers(g).length })}${last ? ' · ' + t('last.session', { d: fmtDate(last.date) }) : ''}</div></a>`;
-    }).join('')}</div><button class="btn" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
+    }).join('')}</div><button class="btn full" data-a="newGroup">${icon('plus')} ${t('group.new')}</button>`;
   }
   return { html: header(t('nav.groups')) + backupBanner() + `<div class="page">${body}</div>` };
 };

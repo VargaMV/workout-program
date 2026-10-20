@@ -95,9 +95,21 @@ function openSheet(html) {
   el.addEventListener('pointerdown', e => { if (e.target === el) closeSheet(); });
   document.body.appendChild(el);
   document.body.classList.add('noscroll');
+  fitSheet();
   const f = el.querySelector('[autofocus]');
   if (f) setTimeout(() => f.focus(), 30);
 }
+// Keep the sheet inside the part of the screen not covered by the on-screen keyboard.
+function fitSheet() {
+  const o = $('.overlay'), v = window.visualViewport;
+  if (!o || !v) return;
+  o.style.top = v.offsetTop + 'px'; o.style.bottom = 'auto'; o.style.height = v.height + 'px';
+}
+document.addEventListener('focusin', e => {
+  if (!e.target.closest('.sheet') || !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  setTimeout(() => { fitSheet(); e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 250);
+});
+if (window.visualViewport) { visualViewport.addEventListener('resize', fitSheet); visualViewport.addEventListener('scroll', fitSheet); }
 function closeSheet() {
   const o = $('.overlay');
   if (o) o.remove();
