@@ -25,9 +25,11 @@ Entry      { sessionId, blockItemId, traineeId, progressionId?|freeText, note } 
 - Strength block = 3 rounds of 2–3 exercises; session = 3 such blocks + interval block, in order, reorderable.
 
 ## "How long on the same progression"
-Computed from entries: number of consecutive **attended** sessions in which the trainee had the same progression
-(same progressionId, or same normalized free text) for that exercise. Missed sessions don't reset it.
-Shown as a small badge (e.g. `×4`) in the matrix, the exercise summary and the trainee history.
+Computed from entries (not stored), counting consecutive **attended** sessions; missed sessions don't reset it.
+Two numbers per trainee/exercise:
+- **Progression streak** – same progression (progressionId, or same normalized free text), reps ignored. Main badge, e.g. `×4`.
+- **Exact streak** – same progression AND same reps/note text. Smaller secondary number, e.g. `×2 exact`.
+Shown in the matrix, the exercise summary and the trainee history.
 Optional threshold setting (e.g. 4) to highlight "maybe time to progress".
 
 ## Screens
@@ -40,7 +42,14 @@ Optional threshold setting (e.g. 4) to highlight "maybe time to progress".
 5. **Trainee profile** – timeline per date, attendance, per-exercise path with `×N`.
 6. **Manage** – groups, trainees, exercise library + ladders, group template (usual workout, edited every ~8 weeks).
 7. **Settings** – language, theme, export/import, backup reminder.
-8. (Optional, later) **Interval timer** – runs work/rest/round-rest from the interval block, with beeps.
+8. **Interval timer** – opened from an interval block (or standalone). Work X / rest Y / round-rest Z, rounds, exercise names
+   shown per round, big countdown, colour change work vs rest, short beeps for the last 3 s, longer beep at phase change,
+   pause/skip/reset. Screen wake lock while running.
+9. **Metronome** – tick every second (optional 2 s), pleasant wood-block-like click (short sine/triangle with fast decay,
+   slightly higher accent on the beat), volume control. Standalone tool, reachable from the main nav.
+
+Audio notes: Web Audio API, scheduled ahead on the audio clock (not setInterval) so ticks stay even; audio starts on a tap
+(browser rule); Wake Lock API keeps the phone awake – a locked screen or backgrounded tab may stop sound on mobile.
 
 ## Phases
 1. Skeleton, i18n, theme, storage, export/import
@@ -50,4 +59,4 @@ Optional threshold setting (e.g. 4) to highlight "maybe time to progress".
 5. Matrix + exercise summary + streak counter
 6. Trainee history
 7. Desktop layout, polish, single-file build
-8. Optional: interval timer
+8. Interval timer + metronome (Web Audio, wake lock)
