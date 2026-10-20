@@ -387,3 +387,18 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 @media (min-width: 900px) { .plan-bar { bottom: 0; } }
 @media (max-width: 559px) { .plan-bar .btn.primary { flex: 1 1 100%; }
   .plan-bar { margin-left: 0; margin-right: 0; padding-left: 8px; padding-right: 8px; } }
+
+/* ---------- session tabs ---------- */
+.block-h.acc { width: 100%; border: 0; text-align: left; cursor: pointer; padding: 6px 10px; gap: 8px; flex-wrap: nowrap; color: inherit; }
+.acc-t { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.acc-t .block-t { flex-wrap: wrap; }
+.acc-s { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 30px; font-size: .78rem; }
+.pgm-ex { border-top: 1px solid var(--line); }
+.pgm-ex:first-of-type { border-top: 0; }
+.pgm-ex summary { font-weight: 700; font-size: 1.05rem; padding: 8px 0; cursor: pointer; }
+.pgm-ex[open] { padding-bottom: 6px; }
+.brief-item.iv h2 { color: var(--work); }
+.brief-item h2 .tag { font-size: .7rem; }
+.sess { display: flex; align-items: center; gap: 8px; }
+.sess-main { flex: 1; min-width: 0; }
+.sess-btns { display: flex; gap: 4px; }

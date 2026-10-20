@@ -67,3 +67,9 @@ Audio notes: Web Audio API, scheduled ahead on the audio clock (not setInterval)
 - New session = planner page: tap exercise names to fill blocks of 3 automatically, or use the 1/2/3/- buttons per row.
   Shortcuts: "like last time", "split by 3", clear; extra exercises outside the template; interval block copied from the last one.
 - Data: `templates: [{id, name, exIds[]}]`, `group.templateId`. Old `group.template` blocks are migrated on load/import.
+
+## Update: session tabs
+- Session page has three tabs: **Program** (read-only overview to announce the workout; exercises expand to "who does which
+  progression"), **Napló** (per-trainee rows, one block open at a time), **Szerkesztés** (date, attendees, block/exercise editing).
+- Route `#/session/ID/(program|log|edit)`; without a tab it opens Program for today/future sessions and Napló for past ones.
+- Session cards in the group's list have direct Program / Napló buttons.

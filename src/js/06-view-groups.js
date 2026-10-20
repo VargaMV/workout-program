@@ -75,7 +75,8 @@ C.showAll = (v, d) => { (ui.showAll = ui.showAll || {})[d.g] = v; render(); };
 function sessionsTab(g) {
   const ss = db.sessions.filter(s => s.groupId === g.id).sort(sessionCmp).reverse();
   if (!ss.length) return `<div class="empty-state"><p>${t('sessions.empty')}</p><button class="btn primary" data-a="newSession" data-g="${g.id}">${t('session.new')}</button></div>`;
-  return `<div class="cards">${ss.map(s => `<a class="card link" href="#/session/${s.id}"><div class="card-t">${fmtLong(s.date)}${s.date > todayStr() ? `<span class="tag">${t('planned')}</span>` : ''}</div><div class="muted">${t('n.attendees', { n: s.attendeeIds.length })} · ${t('n.blocks', { n: s.blocks.length })}</div></a>`).join('')}</div>`;
+  return `<div class="cards">${ss.map(s => `<div class="card sess"><a class="sess-main" href="#/session/${s.id}/program"><div class="card-t">${fmtLong(s.date)}${s.date > todayStr() ? `<span class="tag">${t('planned')}</span>` : ''}</div><div class="muted">${t('n.attendees', { n: s.attendeeIds.length })} · ${t('n.blocks', { n: s.blocks.length })}</div></a>
+    <div class="sess-btns"><a class="btn small" href="#/session/${s.id}/program">${t('tab.program')}</a><a class="btn small" href="#/session/${s.id}/log">${t('tab.log')}</a></div></div>`).join('')}</div>`;
 }
 
 function templateTab(g) {

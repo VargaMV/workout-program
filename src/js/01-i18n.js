@@ -23,6 +23,7 @@ const S = {
   'n.sessions': ['{n} edzésen volt', '{n} sessions attended'], 'n.steps': ['{n} lépés', '{n} steps'],
   'last.session': ['utolsó edzés: {d}', 'last session: {d}'],
   'tab.matrix': ['Áttekintés', 'Overview'], 'tab.sessions': ['Edzések', 'Sessions'], 'tab.template': ['Sablon', 'Template'],
+  'tab.program': ['Program', 'Program'], 'tab.log': ['Napló', 'Log'], 'tab.edit': ['Szerkesztés', 'Edit'], 'expand.all': ['Mind kinyit / becsuk', 'Expand / collapse all'], 'n.rounds': ['{n} kör', '{n} rounds'],
   'tab.templates': ['Sablonok', 'Templates'],
   'tab.trainees': ['Tanulók', 'Trainees'], 'tab.groups': ['Csoportok', 'Groups'], 'tab.exercises': ['Gyakorlatok', 'Exercises'],
   'matrix.nomembers': ['A csoportban még nincs tanuló.', 'This group has no trainees yet.'],

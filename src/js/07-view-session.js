@@ -7,6 +7,7 @@ function getCtx(cs) {
 const findBlock = (c, id) => c.blocks.find(b => b.id === id);
 const dctx = (cs, b) => `data-ctx="${cs}" data-b="${b.id}"`;
 
+// Edit tab: structure only (rounds, order, exercises). Per-trainee rows live in the Log tab.
 function blocksHtml(cs) {
   const c = getCtx(cs);
   const out = c.blocks.map((b, bi) => blockHtml(c, cs, b, bi)).join('');
@@ -22,31 +23,81 @@ function blockHtml(c, cs, b, bi) {
     <button class="icon-btn sm" data-a="moveBlock" ${d} data-dir="-1" ${bi === 0 ? 'disabled' : ''} aria-label="${t('up')}">${icon('up')}</button>
     <button class="icon-btn sm" data-a="moveBlock" ${d} data-dir="1" ${bi === n - 1 ? 'disabled' : ''} aria-label="${t('down')}">${icon('down')}</button>
     <button class="icon-btn sm" data-a="delBlock" ${d} aria-label="${t('delete')}">${icon('trash')}</button></div></div>`;
-  const items = b.items.map((it, ii) => strength ? strengthItemHtml(c, cs, b, it, ii) : intervalItemHtml(cs, b, it, ii)).join('');
-  const top = strength
-    ? (c.kind === 's' && b.items.length ? `<a class="block-top" href="#/brief/${c.s.id}/${b.id}">${t('brief.open')} ${icon('next')}</a>` : '')
-    : `<a class="block-top" href="#/timer/${cs.replace(':', '/')}/${b.id}">${icon('timer')} ${t('timer.start')}</a>`;
+  const items = b.items.map((it, ii) => itemLineHtml(cs, b, it, ii)).join('');
   const foot = `<button class="block-f" data-a="addItem" ${d}>${icon('plus')} ${t('item.add')}</button>`;
   const sum = strength ? '' : `<div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}<button class="link-btn" data-a="editInterval" ${d}>${t('edit')}</button></div>`;
-  return `<section class="block ${strength ? '' : 'iv'}">${head}${top}<div class="block-b">${sum}${items || `<p class="muted">${t('block.empty')}</p>`}${foot}</div></section>`;
+  return `<section class="block ${strength ? '' : 'iv'}">${head}<div class="block-b">${sum}${items || `<p class="muted">${t('block.empty')}</p>`}${foot}</div></section>`;
 }
 
 function itemControls(cs, b, it, ii) {
   const d = `${dctx(cs, b)} data-it="${it.id}"`;
   return `<div class="item-a"><button class="icon-btn sm" data-a="moveItem" ${d} data-dir="-1" ${ii === 0 ? 'disabled' : ''} aria-label="${t('up')}">${icon('up')}</button><button class="icon-btn sm" data-a="moveItem" ${d} data-dir="1" ${ii === b.items.length - 1 ? 'disabled' : ''} aria-label="${t('down')}">${icon('down')}</button><button class="icon-btn sm" data-a="delItem" ${d} aria-label="${t('delete')}">${icon('x')}</button></div>`;
 }
-const intervalItemHtml = (cs, b, it, ii) => `<div class="iv-item"><span>${ii + 1}. ${esc(itemName(it))}</span>${itemControls(cs, b, it, ii)}</div>`;
+const itemLineHtml = (cs, b, it, ii) => `<div class="iv-item"><span>${ii + 1}. ${esc(itemName(it))}${b.type === 'strength' && !it.exId ? `<span class="tag">${t('freetext')}</span>` : ''}</span>${itemControls(cs, b, it, ii)}</div>`;
 
-function strengthItemHtml(c, cs, b, it, ii) {
-  const key = ek(it);
-  let rows = '';
-  if (c.kind === 's') {
-    const s = c.s;
-    const people = s.attendeeIds.map(getTrainee).filter(Boolean).sort(byName);
-    rows = people.map(tr => traineeRow(s, tr, key, b.rounds)).join('') || `<p class="muted">${t('session.noatt')}</p>`;
-  }
-  return `<div class="item"><div class="item-h"><div class="item-n">${esc(itemName(it))}${it.exId ? '' : `<span class="tag">${t('freetext')}</span>`}</div>${itemControls(cs, b, it, ii)}</div>${rows}</div>`;
+const blockTitle = (b, bi) => `${bi + 1}. ${t(b.type === 'strength' ? 'block.strength' : 'block.interval')}`;
+const blockNames = b => b.items.map(itemName).join(', ');
+
+// Log tab: one block open at a time (accordion) so the page stays short.
+function logHtml(s) {
+  if (!s.blocks.length) return `<p class="muted">${t('block.empty')}</p>`;
+  const open = (ui.openBlock || {})[s.id];
+  const openId = s.blocks.some(b => b.id === open) ? open : open === '' ? '' : s.blocks[0].id;
+  return `<div class="blocks">${s.blocks.map((b, bi) => {
+    const on = b.id === openId, strength = b.type === 'strength';
+    const head = `<button class="block-h acc" data-a="openBlock" data-s="${s.id}" data-b="${b.id}"><span class="acc-t"><span class="block-t"><span class="bn">${bi + 1}</span><strong>${t(strength ? 'block.strength' : 'block.interval')}</strong><span class="muted">${t('n.rounds', { n: b.rounds })}</span></span>${on ? '' : `<span class="muted acc-s">${esc(blockNames(b))}</span>`}</span>${icon(on ? 'up' : 'down')}</button>`;
+    let body = '';
+    if (on) {
+      if (strength) {
+        const people = s.attendeeIds.map(getTrainee).filter(Boolean).sort(byName);
+        const items = b.items.map(it => {
+          const key = ek(it);
+          const rows = people.map(tr => traineeRow(s, tr, key, b.rounds)).join('') || `<p class="muted">${t('session.noatt')}</p>`;
+          return `<div class="item"><div class="item-h"><div class="item-n">${esc(itemName(it))}${it.exId ? '' : `<span class="tag">${t('freetext')}</span>`}</div></div>${rows}</div>`;
+        }).join('');
+        body = `${b.items.length ? `<a class="block-top" href="#/brief/${s.id}/${b.id}">${t('brief.open')} ${icon('next')}</a>` : ''}<div class="block-b">${items || `<p class="muted">${t('block.empty')}</p>`}</div>`;
+      } else {
+        body = `<a class="block-top" href="#/timer/s/${s.id}/${b.id}">${icon('timer')} ${t('timer.start')}</a><div class="block-b"><div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}</div>${b.items.map((it, i) => `<div class="iv-item"><span>${i + 1}. ${esc(itemName(it))}</span></div>`).join('') || `<p class="muted">${t('block.empty')}</p>`}</div>`;
+      }
+    }
+    return `<section class="block ${strength ? '' : 'iv'}">${head}${body}</section>`;
+  }).join('')}</div>`;
 }
+A.openBlock = d => { (ui.openBlock = ui.openBlock || {})[d.s] = (ui.openBlock[d.s] === d.b || (!ui.openBlock[d.s] && getSession(d.s).blocks[0].id === d.b)) ? '' : d.b; render(); };
+
+// Who does which progression for one exercise (used by the Program tab and the block briefing).
+function itemGroupsHtml(s, it, people) {
+  const key = ek(it);
+  const list = people.map(tr => {
+    const e = getEntry(s.id, tr.id, key), h = history(tr.id, key);
+    return { t: tr, e, streak: e && isSet(e) ? streakAt(h, h.findIndex(x => x.e === e)) : null };
+  });
+  const { groups, none } = groupByStage(list, key);
+  return groups.map(gr => `<div class="bgroup"><div class="bg-l">${esc(gr.label)} <span class="tag">${gr.items.length}</span></div><div class="bg-n">${gr.items.map(personHtml).join('')}</div></div>`).join('') +
+    (none.length ? `<div class="bgroup none"><div class="bg-l">${t('nodata')}</div><div class="bg-n">${none.map(x => `<span>${esc(x.t.name)}</span>`).join('')}</div></div>` : '');
+}
+
+// Program tab: the whole workout at a glance, for announcing it to the group.
+function programHtml(s) {
+  const people = s.attendeeIds.map(getTrainee).filter(Boolean);
+  const blocks = s.blocks.map((b, bi) => {
+    if (b.type === 'strength') {
+      const items = b.items.map(it => `<details class="pgm-ex"><summary>${esc(itemName(it))}</summary>${itemGroupsHtml(s, it, people)}</details>`).join('');
+      return `<section class="brief-item"><h2>${bi + 1}. ${t('block.strength')} <span class="tag">${t('n.rounds', { n: b.rounds })}</span></h2>${items || `<p class="muted">${t('block.empty')}</p>`}</section>`;
+    }
+    return `<section class="brief-item iv"><h2>${bi + 1}. ${t('block.interval')} <span class="tag">${t('n.rounds', { n: b.rounds })}</span></h2>
+      <div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}</div>
+      <div class="chips">${b.items.map(it => `<span class="tag">${esc(itemName(it))}</span>`).join('')}</div>
+      <div class="row"><a class="btn small primary" href="#/timer/s/${s.id}/${b.id}">${icon('timer')} ${t('timer.start')}</a></div></section>`;
+  }).join('');
+  return `${s.note ? `<p class="muted"><i>${esc(s.note)}</i></p>` : ''}${s.date > todayStr() ? `<p class="muted">${t('session.planned')}</p>` : ''}
+    ${s.blocks.length ? `<div class="row"><button class="btn small" data-a="expandAll">${t('expand.all')}</button><span class="muted">${t('n.attendees', { n: people.length })}</span></div>` : ''}
+    ${blocks || `<p class="muted">${t('block.empty')}</p>`}`;
+}
+A.expandAll = () => {
+  const ds = [...document.querySelectorAll('.pgm-ex')], open = ds.some(d => !d.open);
+  ds.forEach(d => { d.open = open; });
+};
 
 function traineeRow(s, tr, key, rounds) {
   const e = getEntry(s.id, tr.id, key);
@@ -188,21 +239,27 @@ A.pickNew = () => {
 A.pickAdd = () => { const { conf, sel, texts } = ui.pick; closeSheet(); conf.add(sel, texts); };
 
 // ----- session page -----
-V.session = ([id]) => {
+V.session = ([id, tab]) => {
   const s = getSession(id);
   if (!s) return notFound();
   const g = getGroup(s.groupId);
-  const members = g ? activeMembers(g) : [];
-  const guests = s.attendeeIds.filter(x => !members.some(m => m.id === x)).map(getTrainee).filter(Boolean);
-  const chip = m => `<button class="chip ${s.attendeeIds.includes(m.id) ? 'on' : ''}" data-a="toggleAtt" data-s="${s.id}" data-t="${m.id}">${esc(m.name)}</button>`;
-  const body = `<div class="card"><div class="fields"><label class="f">${t('date')}<input type="date" value="${s.date}" data-c="sdate" data-s="${s.id}"></label>
-      <label class="f">${t('note')}<input type="text" value="${esc(s.note || '')}" data-c="snote" data-s="${s.id}"></label></div>
-      <div class="muted" style="margin-bottom:6px">${t('attendees')} (${s.attendeeIds.length})</div>
-      <div class="chips">${members.map(chip).join('')}${guests.map(chip).join('')}<button class="chip" data-a="addGuest" data-s="${s.id}">${icon('plus')} ${t('guest')}</button></div></div>
-    ${s.date > todayStr() ? `<p class="muted">${t('session.planned')}</p>` : ''}
-    ${blocksHtml('s:' + s.id)}
-    <div class="row end"><button class="btn ghost-danger" data-a="delSession" data-s="${s.id}">${icon('trash')} ${t('session.delete')}</button></div>`;
-  return { html: header(fmtLong(s.date), { back: g ? `/group/${g.id}/sessions` : '/', sub: g ? g.name : '' }) + `<div class="page wide">${body}</div>` };
+  // announce first (today/future), record afterwards (past sessions)
+  if (!tab) tab = s.date < todayStr() ? 'log' : 'program';
+  const tabs = ['program', 'log', 'edit'];
+  const nav = `<nav class="tabs">${tabs.map(x => `<a class="${x === tab ? 'on' : ''}" href="#/session/${s.id}/${x}">${t('tab.' + x)}</a>`).join('')}</nav>`;
+  let body;
+  if (tab === 'edit') {
+    const members = g ? activeMembers(g) : [];
+    const guests = s.attendeeIds.filter(x => !members.some(m => m.id === x)).map(getTrainee).filter(Boolean);
+    const chip = m => `<button class="chip ${s.attendeeIds.includes(m.id) ? 'on' : ''}" data-a="toggleAtt" data-s="${s.id}" data-t="${m.id}">${esc(m.name)}</button>`;
+    body = `<div class="card"><div class="fields"><label class="f">${t('date')}<input type="date" value="${s.date}" data-c="sdate" data-s="${s.id}"></label>
+        <label class="f">${t('note')}<input type="text" value="${esc(s.note || '')}" data-c="snote" data-s="${s.id}"></label></div>
+        <div class="muted" style="margin-bottom:6px">${t('attendees')} (${s.attendeeIds.length})</div>
+        <div class="chips">${members.map(chip).join('')}${guests.map(chip).join('')}<button class="chip" data-a="addGuest" data-s="${s.id}">${icon('plus')} ${t('guest')}</button></div></div>
+      ${blocksHtml('s:' + s.id)}
+      <div class="row end"><button class="btn ghost-danger" data-a="delSession" data-s="${s.id}">${icon('trash')} ${t('session.delete')}</button></div>`;
+  } else body = tab === 'log' ? logHtml(s) : programHtml(s);
+  return { html: header(fmtLong(s.date), { back: g ? `/group/${g.id}/sessions` : '/', sub: g ? g.name : '' }) + nav + `<div class="page wide">${body}</div>` };
 };
 C.sdate = (v, d) => { if (!v) return; getSession(d.s).date = v; save(); render(); };
 C.snote = (v, d) => { getSession(d.s).note = v.trim(); save(); };
@@ -280,17 +337,7 @@ V.brief = ([sid, bid]) => {
   if (!b) return notFound();
   const bi = s.blocks.indexOf(b);
   const people = s.attendeeIds.map(getTrainee).filter(Boolean);
-  const items = b.items.map(it => {
-    const key = ek(it);
-    const list = people.map(tr => {
-      const e = getEntry(s.id, tr.id, key), h = history(tr.id, key);
-      return { t: tr, e, streak: e && isSet(e) ? streakAt(h, h.findIndex(x => x.e === e)) : null };
-    });
-    const { groups, none } = groupByStage(list, key);
-    return `<section class="brief-item"><h2>${esc(itemName(it))}</h2><div class="muted">${t('rounds')}: ${b.rounds}</div>
-      ${groups.map(gr => `<div class="bgroup"><div class="bg-l">${esc(gr.label)} <span class="tag">${gr.items.length}</span></div><div class="bg-n">${gr.items.map(personHtml).join('')}</div></div>`).join('')}
-      ${none.length ? `<div class="bgroup none"><div class="bg-l">${t('nodata')}</div><div class="bg-n">${none.map(x => `<span>${esc(x.t.name)}</span>`).join('')}</div></div>` : ''}</section>`;
-  }).join('');
+  const items = b.items.map(it => `<section class="brief-item"><h2>${esc(itemName(it))}</h2><div class="muted">${t('rounds')}: ${b.rounds}</div>${itemGroupsHtml(s, it, people)}</section>`).join('');
   const link = i => {
     const o = s.blocks[i];
     if (!o) return '<span></span>';
