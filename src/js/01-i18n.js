@@ -40,6 +40,7 @@ const S = {
   'tpl.used': ['Használja: {g}', 'Used by: {g}'], 'tpl.unused': ['Egyik csoport sem használja.', 'Not used by any group.'],
   'tpl.help': ['A sablon az időszak gyakorlatainak listája (csoportosítás nélkül), több csoport is használhatja. Új edzésnél ebből választod ki a mai gyakorlatokat. Kb. 8 hetente érdemes újat választani vagy másolatot készíteni.', "A template is the list of exercises for a training period (no grouping); several groups can share it. When you plan a workout you pick today's exercises from it. Switch or copy it about every 8 weeks."],
   'n.exercises': ['{n} gyakorlat', '{n} exercises'],
+  'plan.tpl': ['Sablon', 'Template'], 'plan.tpl.save': ['Legyen ez a csoport aktuális sablonja', "Make this the group's current template"], 'plan.tpl.saved': ['Beállítva a csoport sablonjának', 'Set as the group template'],
   'plan.title': ['Új edzés', 'New session'], 'plan.last': ['Mint legutóbb', 'Like last time'], 'plan.split': ['3-asával', 'Split by 3'], 'plan.clear': ['Törlés', 'Clear'],
   'plan.help': ['Koppints a gyakorlat nevére: a következő szabad blokkba kerül (blokkonként 3). A gombokkal tetszőleges blokkot választhatsz, a – kiveszi.', 'Tap an exercise name to put it in the next block with room (3 per block). Use the buttons to pick any block; – removes it.'],
   'plan.add': ['További gyakorlat', 'More exercises'], 'plan.extra': ['extra', 'extra'], 'plan.block': ['{n}. blokk:', 'Block {n}:'],

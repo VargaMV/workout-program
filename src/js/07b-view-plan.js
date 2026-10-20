@@ -11,7 +11,7 @@ const lastIntervalBlock = gid => {
   return null;
 };
 const planPool = () => {
-  const tp = getTemplate((getGroup(ui.plan.gid) || {}).templateId);
+  const tp = getTemplate(ui.plan.tplId);
   const base = tp ? tp.exIds : [];
   return [...base, ...ui.plan.extra.filter(x => !base.includes(x))].filter(getExercise);
 };
@@ -34,10 +34,10 @@ V.plan = ([gid]) => {
   const g = getGroup(gid);
   if (!g) return notFound();
   if (!ui.plan || ui.plan.gid !== gid) {
-    ui.plan = { gid, date: todayStr(), assign: {}, order: [], extra: [], rounds: {}, interval: !!lastIntervalBlock(gid) };
+    ui.plan = { gid, tplId: g.templateId || '', date: todayStr(), assign: {}, order: [], extra: [], rounds: {}, interval: !!lastIntervalBlock(gid) };
     onLeave(() => { ui.plan = null; });
   }
-  const P = ui.plan, tp = getTemplate(g.templateId), pool = planPool();
+  const P = ui.plan, tp = getTemplate(P.tplId), pool = planPool();
   const used = Object.values(P.assign).filter(Boolean);
   const maxG = Math.min(6, Math.max(3, (used.length ? Math.max(...used) : 0) + 1));
   const rows = pool.map(id => {
@@ -48,7 +48,10 @@ V.plan = ([gid]) => {
   }).join('');
   const nums = [...new Set(used)].sort((a, b) => a - b);
   const summary = nums.map((n, i) => `<div><b>${t('plan.block', { n: i + 1 })}</b> ${P.order.filter(x => P.assign[x] === n).map(x => esc(exName(x))).join(', ')}</div>`).join('');
-  const body = `<div class="card"><label class="f">${t('date')}<input type="date" value="${P.date}" data-c="planDate"></label>
+  const opts = [...db.templates].sort(byName).map(x => `<option value="${x.id}" ${x.id === P.tplId ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+  const body = `<div class="card"><div class="fields"><label class="f">${t('date')}<input type="date" value="${P.date}" data-c="planDate"></label>
+      <label class="f">${t('plan.tpl')}<select data-c="planTpl"><option value="">${t('tpl.none')}</option>${opts}</select></label></div>
+      ${(P.tplId || '') !== (g.templateId || '') && P.tplId ? `<button class="link-btn" data-a="planTplSave">${t('plan.tpl.save')}</button>` : ''}
       <div class="join"><button class="btn" data-a="planLast">${t('plan.last')}</button><button class="btn" data-a="planSplit">${t('plan.split')}</button><button class="btn" data-a="planClear">${t('plan.clear')}</button></div>
       <p class="muted" style="margin:0">${t('plan.help')}</p></div>
     ${pool.length ? `<div class="plan-list">${rows}</div>` : `<p class="muted">${tp ? t('plan.emptypool') : t('plan.notpl')}</p>`}
@@ -100,6 +103,14 @@ A.planAdd = () => openPicker({
     render();
   },
 });
+C.planTpl = v => {
+  const P = ui.plan;
+  P.tplId = v;
+  // exercises already chosen but not in the new template stay available as extras
+  for (const id of Object.keys(P.assign)) if (P.assign[id] && !planPool().includes(id) && !P.extra.includes(id)) P.extra.push(id);
+  render();
+};
+A.planTplSave = () => { getGroup(ui.plan.gid).templateId = ui.plan.tplId; save(); toast(t('plan.tpl.saved')); render(); };
 C.planDate = v => { ui.plan.date = v || todayStr(); };
 C.planInterval = v => { ui.plan.interval = v; };
 A.planCreate = () => {

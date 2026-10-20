@@ -449,6 +449,7 @@ const S = {
   'tpl.used': ['Használja: {g}', 'Used by: {g}'], 'tpl.unused': ['Egyik csoport sem használja.', 'Not used by any group.'],
   'tpl.help': ['A sablon az időszak gyakorlatainak listája (csoportosítás nélkül), több csoport is használhatja. Új edzésnél ebből választod ki a mai gyakorlatokat. Kb. 8 hetente érdemes újat választani vagy másolatot készíteni.', "A template is the list of exercises for a training period (no grouping); several groups can share it. When you plan a workout you pick today's exercises from it. Switch or copy it about every 8 weeks."],
   'n.exercises': ['{n} gyakorlat', '{n} exercises'],
+  'plan.tpl': ['Sablon', 'Template'], 'plan.tpl.save': ['Legyen ez a csoport aktuális sablonja', "Make this the group's current template"], 'plan.tpl.saved': ['Beállítva a csoport sablonjának', 'Set as the group template'],
   'plan.title': ['Új edzés', 'New session'], 'plan.last': ['Mint legutóbb', 'Like last time'], 'plan.split': ['3-asával', 'Split by 3'], 'plan.clear': ['Törlés', 'Clear'],
   'plan.help': ['Koppints a gyakorlat nevére: a következő szabad blokkba kerül (blokkonként 3). A gombokkal tetszőleges blokkot választhatsz, a – kiveszi.', 'Tap an exercise name to put it in the next block with room (3 per block). Use the buttons to pick any block; – removes it.'],
   'plan.add': ['További gyakorlat', 'More exercises'], 'plan.extra': ['extra', 'extra'], 'plan.block': ['{n}. blokk:', 'Block {n}:'],
@@ -1343,7 +1344,7 @@ const lastIntervalBlock = gid => {
   return null;
 };
 const planPool = () => {
-  const tp = getTemplate((getGroup(ui.plan.gid) || {}).templateId);
+  const tp = getTemplate(ui.plan.tplId);
   const base = tp ? tp.exIds : [];
   return [...base, ...ui.plan.extra.filter(x => !base.includes(x))].filter(getExercise);
 };
@@ -1366,10 +1367,10 @@ V.plan = ([gid]) => {
   const g = getGroup(gid);
   if (!g) return notFound();
   if (!ui.plan || ui.plan.gid !== gid) {
-    ui.plan = { gid, date: todayStr(), assign: {}, order: [], extra: [], rounds: {}, interval: !!lastIntervalBlock(gid) };
+    ui.plan = { gid, tplId: g.templateId || '', date: todayStr(), assign: {}, order: [], extra: [], rounds: {}, interval: !!lastIntervalBlock(gid) };
     onLeave(() => { ui.plan = null; });
   }
-  const P = ui.plan, tp = getTemplate(g.templateId), pool = planPool();
+  const P = ui.plan, tp = getTemplate(P.tplId), pool = planPool();
   const used = Object.values(P.assign).filter(Boolean);
   const maxG = Math.min(6, Math.max(3, (used.length ? Math.max(...used) : 0) + 1));
   const rows = pool.map(id => {
@@ -1380,7 +1381,10 @@ V.plan = ([gid]) => {
   }).join('');
   const nums = [...new Set(used)].sort((a, b) => a - b);
   const summary = nums.map((n, i) => `<div><b>${t('plan.block', { n: i + 1 })}</b> ${P.order.filter(x => P.assign[x] === n).map(x => esc(exName(x))).join(', ')}</div>`).join('');
-  const body = `<div class="card"><label class="f">${t('date')}<input type="date" value="${P.date}" data-c="planDate"></label>
+  const opts = [...db.templates].sort(byName).map(x => `<option value="${x.id}" ${x.id === P.tplId ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+  const body = `<div class="card"><div class="fields"><label class="f">${t('date')}<input type="date" value="${P.date}" data-c="planDate"></label>
+      <label class="f">${t('plan.tpl')}<select data-c="planTpl"><option value="">${t('tpl.none')}</option>${opts}</select></label></div>
+      ${(P.tplId || '') !== (g.templateId || '') && P.tplId ? `<button class="link-btn" data-a="planTplSave">${t('plan.tpl.save')}</button>` : ''}
       <div class="join"><button class="btn" data-a="planLast">${t('plan.last')}</button><button class="btn" data-a="planSplit">${t('plan.split')}</button><button class="btn" data-a="planClear">${t('plan.clear')}</button></div>
       <p class="muted" style="margin:0">${t('plan.help')}</p></div>
     ${pool.length ? `<div class="plan-list">${rows}</div>` : `<p class="muted">${tp ? t('plan.emptypool') : t('plan.notpl')}</p>`}
@@ -1432,6 +1436,14 @@ A.planAdd = () => openPicker({
     render();
   },
 });
+C.planTpl = v => {
+  const P = ui.plan;
+  P.tplId = v;
+  // exercises already chosen but not in the new template stay available as extras
+  for (const id of Object.keys(P.assign)) if (P.assign[id] && !planPool().includes(id) && !P.extra.includes(id)) P.extra.push(id);
+  render();
+};
+A.planTplSave = () => { getGroup(ui.plan.gid).templateId = ui.plan.tplId; save(); toast(t('plan.tpl.saved')); render(); };
 C.planDate = v => { ui.plan.date = v || todayStr(); };
 C.planInterval = v => { ui.plan.interval = v; };
 A.planCreate = () => {
