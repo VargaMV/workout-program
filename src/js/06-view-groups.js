@@ -53,7 +53,7 @@ function cellHtml(tid, key) {
   const hot = streak.n >= db.settings.threshold;
   return `<td class="${hot ? 'hot' : ''}"><div class="st">${esc(entryLabel(e))}</div>
     <div class="meta">${streakChips(streak)}</div>
-    ${e.reps ? `<small>${esc(e.reps)}</small>` : ''}<small>${fmtDate(s.date)}</small>
+    <small>${e.reps ? esc(e.reps) + ' · ' : ''}${fmtDate(s.date)}</small>
     ${pl && !sameExact(pl, e) ? `<div class="next">→ ${esc(entryLabel(pl))}${pl.reps ? ' · ' + esc(pl.reps) : ''}</div>` : ''}</td>`;
 }
 
