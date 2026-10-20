@@ -1,0 +1,3 @@
+load();
+applyTheme();
+render();

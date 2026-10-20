@@ -1,0 +1,22 @@
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const pad = n => String(n).padStart(2, '0');
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+const parseDate = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+const num = (v, def, min, max) => { const n = parseInt(v, 10); return Number.isFinite(n) ? clamp(n, min, max) : def; };
+const locale = () => (db.settings.lang === 'hu' ? 'hu-HU' : 'en-GB');
+const fmtDate = s => {
+  if (!s) return '';
+  const d = parseDate(s);
+  const o = { month: 'short', day: 'numeric' };
+  if (d.getFullYear() !== new Date().getFullYear()) o.year = 'numeric';
+  return d.toLocaleDateString(locale(), o);
+};
+const fmtLong = s => parseDate(s).toLocaleDateString(locale(), { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+const fmtDur = sec => `${Math.floor(sec / 60)}:${pad(Math.round(sec % 60))}`;
+const move = (arr, i, dir) => { const j = i + dir; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; };
+const byName = (a, b) => a.name.localeCompare(b.name, locale());
