@@ -13,7 +13,7 @@ const S = {
 
   'home.empty.t': ['Kezdjük el!', "Let's get started!"],
   'home.empty.p': ['Az adatok csak ebben a böngészőben tárolódnak, az Beállításokban menthetők fájlba.', 'Data is stored only in this browser; back it up to a file in Settings.'],
-  'home.s1': ['Hozz létre egy csoportot', 'Create a group'], 'home.s2': ['Vedd fel a tanulókat', 'Add your trainees'],
+  'home.s1': ['Hozz létre egy csoportot', 'Create a group'], 'home.s2': ['Add hozzá a tagokat a csoport Tagok fülén', "Add members on the group's Members tab"],
   'home.s3': ['Add meg a gyakorlatokat és a progressziólépcsőket', 'Add exercises and their progression steps'],
   'home.openEx': ['Gyakorlatok', 'Exercises'],
   'group.new': ['Új csoport', 'New group'], 'group.edit': ['Csoport szerkesztése', 'Edit group'], 'group.members': ['Tagok', 'Members'],
@@ -24,6 +24,7 @@ const S = {
   'last.session': ['utolsó edzés: {d}', 'last session: {d}'],
   'tab.matrix': ['Áttekintés', 'Overview'], 'tab.sessions': ['Edzések', 'Sessions'], 'tab.template': ['Sablon', 'Template'],
   'tab.program': ['Program', 'Program'], 'tab.log': ['Napló', 'Log'], 'tab.edit': ['Szerkesztés', 'Edit'], 'expand.all': ['Mind kinyit / becsuk', 'Expand / collapse all'], 'n.rounds': ['{n} kör', '{n} rounds'],
+  'tab.members': ['Tagok', 'Members'], 'member.new': ['Új tag', 'New member'], 'member.addExisting': ['Meglévő tag hozzáadása', 'Add existing member'], 'member.remove': ['Kivétel a csoportból', 'Remove from group'],
   'tab.templates': ['Sablonok', 'Templates'],
   'tab.trainees': ['Tanulók', 'Trainees'], 'tab.groups': ['Csoportok', 'Groups'], 'tab.exercises': ['Gyakorlatok', 'Exercises'],
   'matrix.nomembers': ['A csoportban még nincs tanuló.', 'This group has no trainees yet.'],

@@ -38,9 +38,9 @@ A.newGroup = () => promptBox(t('group.new'), t('name'), '', name => {
 V.group = ([id, tab = 'matrix']) => {
   const g = getGroup(id);
   if (!g) return notFound();
-  const tabs = ['matrix', 'sessions', 'template'];
+  const tabs = ['matrix', 'sessions', 'members', 'template'];
   const nav = `<nav class="tabs">${tabs.map(x => `<a class="${x === tab ? 'on' : ''}" href="#/group/${g.id}/${x}">${t('tab.' + x)}</a>`).join('')}</nav>`;
-  const body = tab === 'sessions' ? sessionsTab(g) : tab === 'template' ? templateTab(g) : matrixTab(g);
+  const body = tab === 'sessions' ? sessionsTab(g) : tab === 'template' ? templateTab(g) : tab === 'members' ? membersTab(g) : matrixTab(g);
   const actions = `<button class="icon-btn" data-a="editGroup" data-id="${g.id}" aria-label="${t('group.edit')}">${icon('edit')}</button><button class="btn primary" data-a="newSession" data-g="${g.id}">${icon('plus')}<span class="hide-s">${t('session.new')}</span></button>`;
   return { html: header(g.name, { back: '/', actions, sub: t('n.members', { n: activeMembers(g).length }) }) + nav + `<div class="page wide">${body}</div>` };
 };
@@ -59,7 +59,7 @@ function cellHtml(tid, key) {
 
 function matrixTab(g) {
   const ms = activeMembers(g);
-  if (!ms.length) return `<div class="empty-state"><p>${t('matrix.nomembers')}</p><button class="btn primary" data-a="editGroup" data-id="${g.id}">${t('group.edit')}</button></div>`;
+  if (!ms.length) return `<div class="empty-state"><p>${t('matrix.nomembers')}</p><a class="btn primary" href="#/group/${g.id}/members">${t('tab.members')}</a></div>`;
   const { main, extra } = groupColumns(g);
   const all = (ui.showAll || {})[g.id] || !main.length;
   const cols = all ? [...main, ...extra] : main;
@@ -77,6 +77,15 @@ function sessionsTab(g) {
   if (!ss.length) return `<div class="empty-state"><p>${t('sessions.empty')}</p><button class="btn primary" data-a="newSession" data-g="${g.id}">${t('session.new')}</button></div>`;
   return `<div class="cards">${ss.map(s => `<div class="card sess"><a class="sess-main" href="#/session/${s.id}/program"><div class="card-t">${fmtLong(s.date)}${s.date > todayStr() ? `<span class="tag">${t('planned')}</span>` : ''}</div><div class="muted">${t('n.attendees', { n: s.attendeeIds.length })} · ${t('n.blocks', { n: s.blocks.length })}</div></a>
     <div class="sess-btns"><a class="btn small" href="#/session/${s.id}/program">${t('tab.program')}</a><a class="btn small" href="#/session/${s.id}/log">${t('tab.log')}</a></div></div>`).join('')}</div>`;
+}
+
+function membersTab(g) {
+  const ms = activeMembers(g);
+  const rows = ms.map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}" data-g="${g.id}"><span class="grow"><b>${esc(x.name)}</b>${x.note ? `<div class="muted warn-note">${esc(x.note)}</div>` : ''}</span>${icon('edit')}</button>`).join('');
+  const hasOthers = db.trainees.some(x => !g.traineeIds.includes(x.id));
+  return `<div class="rows">${rows || `<p class="muted">${t('matrix.nomembers')}</p>`}</div>
+    <button class="btn primary full" data-a="editTrainee" data-g="${g.id}">${icon('plus')} ${t('member.new')}</button>
+    ${hasOthers ? `<button class="btn full" data-a="addMember" data-g="${g.id}">${icon('plus')} ${t('member.addExisting')}</button>` : ''}`;
 }
 
 function templateTab(g) {

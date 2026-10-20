@@ -27,8 +27,9 @@ V.trainee = ([id]) => {
 };
 
 // ---------- manage ----------
-V.manage = ([tab = 'trainees']) => {
-  const tabs = ['trainees', 'groups', 'templates', 'exercises'];
+V.manage = ([tab]) => {
+  const tabs = ['groups', 'templates', 'exercises'];
+  if (!tabs.includes(tab)) tab = 'groups';
   const nav = `<nav class="tabs">${tabs.map(x => `<a class="${x === tab ? 'on' : ''}" href="#/manage/${x}">${t('tab.' + x)}</a>`).join('')}</nav>`;
   let body;
   if (tab === 'groups') {
@@ -40,9 +41,6 @@ V.manage = ([tab = 'trainees']) => {
   } else if (tab === 'exercises') {
     body = `<input type="search" data-i="exSearch" placeholder="${t('search')}" style="margin-bottom:12px"><div class="rows" id="exList">${exList('')}</div>
       <button class="btn primary full" data-a="newExercise">${icon('plus')} ${t('ex.new')}</button>`;
-  } else {
-    body = `<div class="rows">${[...db.trainees].sort(byName).map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}"><span class="grow"><b>${esc(x.name)}</b><div class="muted">${esc(db.groups.filter(g => g.traineeIds.includes(x.id)).map(g => g.name).join(', ') || t('nogroup'))}${x.note ? ' · ' + esc(x.note) : ''}</div></span>${icon('edit')}</button>`).join('') || `<p class="muted">${t('nodata')}</p>`}</div>
-      <button class="btn primary full" data-a="editTrainee">${icon('plus')} ${t('trainee.new')}</button>`;
   }
   return { html: header(t('nav.manage')) + nav + `<div class="page">${body}</div>` };
 };
@@ -52,50 +50,50 @@ function exList(q) {
 }
 I.exSearch = v => { $('#exList').innerHTML = exList(v); };
 
-A.editTrainee = ({ id }) => {
+// Members are managed inside their group (Tagok tab); g is the group the sheet was opened from.
+A.editTrainee = ({ id, g }) => {
   const tr = id ? getTrainee(id) : { name: '', note: '' };
-  openSheet(`<h2>${id ? t('edit') : t('trainee.new')}</h2><form data-f="saveTrainee" data-id="${id || ''}">
+  const inGroup = id && g && getGroup(g) && getGroup(g).traineeIds.includes(id);
+  openSheet(`<h2>${id ? t('edit') : t('member.new')}</h2><form data-f="saveTrainee" data-id="${id || ''}" data-g="${g || ''}">
     <label class="f">${t('name')}<input type="text" name="name" value="${esc(tr.name)}" required autofocus autocomplete="off"></label>
     <label class="f">${t('trainee.note')}<input type="text" name="note" value="${esc(tr.note || '')}" placeholder="${t('trainee.note.ph')}"></label>
-    ${db.groups.length ? `<div class="muted">${t('tab.groups')}</div><div class="checklist">${[...db.groups].sort(byName).map(g => `<label class="check"><input type="checkbox" name="g" value="${g.id}" ${g.traineeIds.includes(id) ? 'checked' : ''}> ${esc(g.name)}</label>`).join('')}</div>` : ''}
-    <div class="row between">${id ? `<button type="button" class="btn ghost-danger" data-a="delTrainee" data-id="${id}">${t('delete')}</button>` : '<span></span>'}<span class="row"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></span></div></form>`);
+    <div class="row between"><span class="row" style="margin:0">${inGroup ? `<button type="button" class="btn ghost-danger" data-a="leaveGroup" data-id="${id}" data-g="${g}">${t('member.remove')}</button>` : ''}${id ? `<button type="button" class="btn ghost-danger" data-a="delTrainee" data-id="${id}">${t('delete')}</button>` : ''}</span><span class="row" style="margin:0"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></span></div></form>`);
 };
 F.saveTrainee = (fd, d) => {
   const name = String(fd.get('name') || '').trim();
   if (!name) return;
   let tr = d.id && getTrainee(d.id);
-  if (!tr) { tr = { id: uid() }; db.trainees.push(tr); }
+  if (!tr) {
+    tr = { id: uid() }; db.trainees.push(tr);
+    const g = d.g && getGroup(d.g);
+    if (g) g.traineeIds.push(tr.id);
+  }
   tr.name = name; tr.note = String(fd.get('note') || '').trim();
-  const gs = fd.getAll('g');
-  db.groups.forEach(g => {
-    const has = g.traineeIds.includes(tr.id), want = gs.includes(g.id);
-    if (want && !has) g.traineeIds.push(tr.id);
-    if (!want && has) g.traineeIds = g.traineeIds.filter(x => x !== tr.id);
-  });
   save(); closeSheet(); render();
 };
-A.delTrainee = ({ id }) => confirmBox(t('trainee.delq'), t('delete'), () => { deleteTrainee(id); save(); if (parseRoute().name === 'trainee') navigate('/manage/trainees'); else render(); });
+A.leaveGroup = ({ id, g }) => { const grp = getGroup(g); grp.traineeIds = grp.traineeIds.filter(x => x !== id); save(); closeSheet(); render(); };
+A.delTrainee = ({ id }) => confirmBox(t('trainee.delq'), t('delete'), () => { deleteTrainee(id); save(); if (parseRoute().name === 'trainee') navigate('/'); else render(); });
+A.addMember = ({ g }) => {
+  const grp = getGroup(g);
+  const others = db.trainees.filter(x => !grp.traineeIds.includes(x.id)).sort(byName);
+  openSheet(`<h2>${t('member.addExisting')}</h2><div class="pick-res">${others.map(x => `<label class="check"><input type="checkbox" data-c="memberPick" data-id="${x.id}"> ${esc(x.name)}</label>`).join('') || `<p class="muted" style="padding:8px 10px;margin:0">${t('pick.none')}</p>`}</div>
+    <div class="row end"><button class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary" data-a="memberAddGo" data-g="${g}">${t('save')}</button></div>`);
+  ui.memberSel = [];
+};
+C.memberPick = (on, d) => { const s = ui.memberSel, i = s.indexOf(d.id); if (on && i < 0) s.push(d.id); else if (!on && i >= 0) s.splice(i, 1); };
+A.memberAddGo = ({ g }) => { const grp = getGroup(g); ui.memberSel.forEach(x => { if (!grp.traineeIds.includes(x)) grp.traineeIds.push(x); }); save(); closeSheet(); render(); };
 
 A.editGroup = ({ id }) => {
   const g = getGroup(id);
-  const trs = [...db.trainees].sort(byName);
   openSheet(`<h2>${t('group.edit')}</h2><form data-f="saveGroup" data-id="${id}">
     <label class="f">${t('name')}<input type="text" name="name" value="${esc(g.name)}" required autocomplete="off"></label>
-    <div class="muted">${t('group.members')}</div>
-    <div class="checklist">${trs.map(x => `<label class="check"><input type="checkbox" name="m" value="${x.id}" ${g.traineeIds.includes(x.id) ? 'checked' : ''}> ${esc(x.name)}</label>`).join('') || `<p class="muted">${t('group.notrainees')}</p>`}</div>
-    <div class="row between"><button type="button" class="btn ghost-danger" data-a="delGroup" data-id="${id}">${t('delete')}</button><span class="row"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></span></div></form>
-    <button class="link-btn" data-a="quickTrainee" data-id="${id}">${icon('plus')} ${t('trainee.new')}</button>`);
+    <div class="row between"><button type="button" class="btn ghost-danger" data-a="delGroup" data-id="${id}">${t('delete')}</button><span class="row" style="margin:0"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></span></div></form>`);
 };
 F.saveGroup = (fd, d) => {
   const g = getGroup(d.id), name = String(fd.get('name') || '').trim();
   if (!name) return;
-  g.name = name; g.traineeIds = fd.getAll('m'); save(); closeSheet(); render();
+  g.name = name; save(); closeSheet(); render();
 };
-A.quickTrainee = ({ id }) => promptBox(t('trainee.new'), t('name'), '', name => {
-  const tr = { id: uid(), name, note: '' };
-  db.trainees.push(tr); getGroup(id).traineeIds.push(tr.id); save(); render();
-  A.editGroup({ id });
-});
 A.delGroup = ({ id }) => confirmBox(t('group.delq'), t('delete'), () => { deleteGroup(id); save(); navigate('/'); render(); });
 
 // ---------- exercise editor ----------
