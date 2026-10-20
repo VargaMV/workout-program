@@ -207,7 +207,12 @@ table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
 .trow .tn { grid-area: tn; }
 .tmeta { grid-area: meta; display: flex; gap: 4px; align-items: stretch; }
 .tmeta input { min-height: 34px; font-size: .88rem; }
-.tmeta .reps { flex: 1 1 60px; min-width: 0; }
+.tmeta .rr { align-self: center; color: var(--ink2); font-weight: 600; font-size: .9rem; flex: none; }
+.tmeta .reps { flex: 0 0 64px; width: 64px; min-width: 0; text-align: center; }
+.tmeta .wt { }
+.tmeta .spacer { flex: 1; }
+.tmeta input[type=number] { -moz-appearance: textfield; }
+.tmeta input::-webkit-outer-spin-button, .tmeta input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .tmeta .wt { display: none; flex: 0 0 64px; width: 64px; text-align: right; }
 .trow.show-w .wt { display: block; }
 .kgbtn { flex: none; min-height: 34px; padding: 0 9px; border-radius: var(--rs); border: 1px solid var(--line); background: var(--surface); color: var(--ink2); font-weight: 600; font-size: .82rem; cursor: pointer; }

@@ -21,7 +21,7 @@ const sameStage = (a, b) => (a.progId || b.progId ? a.progId === b.progId : norm
 // Entry detail: reps, optional weight (only when "weighted" is ticked) and an optional note that never counts for streaks.
 const wkey = e => (e.weighted ? String(e.weight || '').trim().replace(',', '.') : '');
 const sameExact = (a, b) => sameStage(a, b) && norm(a.reps) === norm(b.reps) && wkey(a) === wkey(b);
-const extraText = e => [String(e.reps || '').trim(), e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
+const extraText = e => [e.reps ? (e.rounds ? `${e.rounds}×${e.reps}` : String(e.reps)) : '', e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
 
 // All set entries of a trainee for one exercise, newest session first.
 function history(tid, key) {
@@ -76,13 +76,14 @@ function prefill(s, tid, key) {
 // Make entries match attendees x strength items: create missing (prefilled from last time), drop orphans.
 function syncEntries(s) {
   const keys = new Map();
-  for (const b of s.blocks) if (b.type === 'strength') for (const it of b.items) keys.set(ek(it), it);
+  const roundsOf = new Map();
+  for (const b of s.blocks) if (b.type === 'strength') for (const it of b.items) { keys.set(ek(it), it); roundsOf.set(ek(it), b.rounds); }
   db.entries = db.entries.filter(e => e.sessionId !== s.id || (s.attendeeIds.includes(e.traineeId) && keys.has(e.ek)));
   for (const tid of s.attendeeIds) {
     for (const [k, it] of keys) {
-      const ex = getEntry(s.id, tid, k);
-      if (ex) { ex.exName = itemName(it); continue; }
-      db.entries.push({ id: uid(), sessionId: s.id, traineeId: tid, ek: k, exId: it.exId || null, exName: itemName(it), ...prefill(s, tid, k) });
+      const ex = getEntry(s.id, tid, k), rounds = roundsOf.get(k);
+      if (ex) { ex.exName = itemName(it); ex.rounds = rounds; continue; }
+      db.entries.push({ id: uid(), sessionId: s.id, traineeId: tid, ek: k, exId: it.exId || null, exName: itemName(it), rounds, ...prefill(s, tid, k) });
     }
   }
 }

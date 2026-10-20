@@ -21,6 +21,19 @@ function normalizeDb(raw) {
     d.settings = { ...d.settings, ...s, timer: { ...d.settings.timer, ...(s.timer || {}) }, metro: { ...d.settings.metro, ...(s.metro || {}) } };
   }
   for (const x of d.trainees) delete x.active;
+  // Reps are a plain number now ("3x8" -> 8); anything else moves into the note. Rounds come from the block.
+  const sess = new Map(d.sessions.map(s => [s.id, s]));
+  for (const e of d.entries) {
+    if (e.reps !== undefined && e.reps !== '') {
+      const m = String(e.reps).trim().match(/^(?:\d+\s*[x×*]\s*)?(\d+)$/i);
+      if (m) e.reps = m[1];
+      else { e.note = [e.note, e.reps].filter(Boolean).join('; '); delete e.reps; }
+    }
+    if (e.rounds === undefined) {
+      const s = sess.get(e.sessionId), b = s && s.blocks.find(x => x.type === 'strength' && x.items.some(i => (i.exId || 'n:' + norm(i.name)) === e.ek));
+      if (b) e.rounds = b.rounds;
+    }
+  }
   // Older data kept the usual workout as blocks inside the group: turn it into a named template.
   for (const g of d.groups) {
     if (!Array.isArray(g.template)) continue;

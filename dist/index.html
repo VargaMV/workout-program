@@ -216,7 +216,12 @@ table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
 .trow .tn { grid-area: tn; }
 .tmeta { grid-area: meta; display: flex; gap: 4px; align-items: stretch; }
 .tmeta input { min-height: 34px; font-size: .88rem; }
-.tmeta .reps { flex: 1 1 60px; min-width: 0; }
+.tmeta .rr { align-self: center; color: var(--ink2); font-weight: 600; font-size: .9rem; flex: none; }
+.tmeta .reps { flex: 0 0 64px; width: 64px; min-width: 0; text-align: center; }
+.tmeta .wt { }
+.tmeta .spacer { flex: 1; }
+.tmeta input[type=number] { -moz-appearance: textfield; }
+.tmeta input::-webkit-outer-spin-button, .tmeta input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .tmeta .wt { display: none; flex: 0 0 64px; width: 64px; text-align: right; }
 .trow.show-w .wt { display: block; }
 .kgbtn { flex: none; min-height: 34px; padding: 0 9px; border-radius: var(--rs); border: 1px solid var(--line); background: var(--surface); color: var(--ink2); font-weight: 600; font-size: .82rem; cursor: pointer; }
@@ -561,6 +566,19 @@ function normalizeDb(raw) {
     d.settings = { ...d.settings, ...s, timer: { ...d.settings.timer, ...(s.timer || {}) }, metro: { ...d.settings.metro, ...(s.metro || {}) } };
   }
   for (const x of d.trainees) delete x.active;
+  // Reps are a plain number now ("3x8" -> 8); anything else moves into the note. Rounds come from the block.
+  const sess = new Map(d.sessions.map(s => [s.id, s]));
+  for (const e of d.entries) {
+    if (e.reps !== undefined && e.reps !== '') {
+      const m = String(e.reps).trim().match(/^(?:\d+\s*[x×*]\s*)?(\d+)$/i);
+      if (m) e.reps = m[1];
+      else { e.note = [e.note, e.reps].filter(Boolean).join('; '); delete e.reps; }
+    }
+    if (e.rounds === undefined) {
+      const s = sess.get(e.sessionId), b = s && s.blocks.find(x => x.type === 'strength' && x.items.some(i => (i.exId || 'n:' + norm(i.name)) === e.ek));
+      if (b) e.rounds = b.rounds;
+    }
+  }
   // Older data kept the usual workout as blocks inside the group: turn it into a named template.
   for (const g of d.groups) {
     if (!Array.isArray(g.template)) continue;
@@ -662,7 +680,7 @@ const sameStage = (a, b) => (a.progId || b.progId ? a.progId === b.progId : norm
 // Entry detail: reps, optional weight (only when "weighted" is ticked) and an optional note that never counts for streaks.
 const wkey = e => (e.weighted ? String(e.weight || '').trim().replace(',', '.') : '');
 const sameExact = (a, b) => sameStage(a, b) && norm(a.reps) === norm(b.reps) && wkey(a) === wkey(b);
-const extraText = e => [String(e.reps || '').trim(), e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
+const extraText = e => [e.reps ? (e.rounds ? `${e.rounds}×${e.reps}` : String(e.reps)) : '', e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
 
 // All set entries of a trainee for one exercise, newest session first.
 function history(tid, key) {
@@ -717,13 +735,14 @@ function prefill(s, tid, key) {
 // Make entries match attendees x strength items: create missing (prefilled from last time), drop orphans.
 function syncEntries(s) {
   const keys = new Map();
-  for (const b of s.blocks) if (b.type === 'strength') for (const it of b.items) keys.set(ek(it), it);
+  const roundsOf = new Map();
+  for (const b of s.blocks) if (b.type === 'strength') for (const it of b.items) { keys.set(ek(it), it); roundsOf.set(ek(it), b.rounds); }
   db.entries = db.entries.filter(e => e.sessionId !== s.id || (s.attendeeIds.includes(e.traineeId) && keys.has(e.ek)));
   for (const tid of s.attendeeIds) {
     for (const [k, it] of keys) {
-      const ex = getEntry(s.id, tid, k);
-      if (ex) { ex.exName = itemName(it); continue; }
-      db.entries.push({ id: uid(), sessionId: s.id, traineeId: tid, ek: k, exId: it.exId || null, exName: itemName(it), ...prefill(s, tid, k) });
+      const ex = getEntry(s.id, tid, k), rounds = roundsOf.get(k);
+      if (ex) { ex.exName = itemName(it); ex.rounds = rounds; continue; }
+      db.entries.push({ id: uid(), sessionId: s.id, traineeId: tid, ek: k, exId: it.exId || null, exName: itemName(it), rounds, ...prefill(s, tid, k) });
     }
   }
 }
@@ -1139,12 +1158,12 @@ function strengthItemHtml(c, cs, b, it, ii) {
   if (c.kind === 's') {
     const s = c.s;
     const people = s.attendeeIds.map(getTrainee).filter(Boolean).sort(byName);
-    rows = people.map(tr => traineeRow(s, tr, key)).join('') || `<p class="muted">${t('session.noatt')}</p>`;
+    rows = people.map(tr => traineeRow(s, tr, key, b.rounds)).join('') || `<p class="muted">${t('session.noatt')}</p>`;
   }
   return `<div class="item"><div class="item-h"><div class="item-n">${esc(itemName(it))}${it.exId ? '' : `<span class="tag">${t('freetext')}</span>`}</div>${itemControls(cs, b, it, ii)}</div>${rows}</div>`;
 }
 
-function traineeRow(s, tr, key) {
+function traineeRow(s, tr, key, rounds) {
   const e = getEntry(s.id, tr.id, key);
   if (!e) return '';
   const prev = prevEntry(s, tr.id, key);
@@ -1159,9 +1178,9 @@ function traineeRow(s, tr, key) {
   const wOn = !!e.weighted;
   return `<div class="trow ${e.note ? 'show-note' : ''} ${wOn ? 'show-w' : ''}"><div class="tn"><a href="#/trainee/${tr.id}">${esc(tr.name)}</a>${tr.note ? `<span class="prev warn-note">${esc(tr.note)}</span>` : ''}<span class="prev">${prev ? t('last') + ': ' + esc(entryLabel(prev)) + (extraText(prev) ? ' · ' + esc(extraText(prev)) : '') : t('first')}</span></div>
     <div class="tctl"><button class="stage ${set ? '' : 'unset'} ${changed ? 'changed' : ''}" data-a="stage" ${d}><span>${set ? esc(entryLabel(e)) : t('stage.unset')}</span><span class="badges">${set ? streakChips(sk) : ''}</span></button>${canUp ? `<button class="mini" data-a="nextStep" ${d} aria-label="${t('stage.next')}" title="${t('stage.next')}">${icon('up')}</button>` : ''}</div>
-    <div class="tmeta"><input type="text" class="reps" value="${esc(e.reps || '')}" placeholder="${t('reps.ph')}" data-c="reps" ${d}>
+    <div class="tmeta"><span class="rr">${rounds}×</span><input type="number" inputmode="numeric" min="0" max="999" class="reps" value="${esc(e.reps || '')}" placeholder="${t('reps.ph')}" data-c="reps" ${d}>
       <button class="kgbtn ${wOn ? 'on' : ''}" data-a="togW" ${d} title="${t('weighted')}">+kg</button>
-      <input type="text" inputmode="decimal" class="wt" value="${esc(e.weight || '')}" placeholder="kg" data-c="weight" ${d}>
+      <input type="text" inputmode="decimal" class="wt" value="${esc(e.weight || '')}" placeholder="kg" data-c="weight" ${d}><span class="spacer"></span>
       <button class="icon-btn sm notebtn ${e.note ? 'on' : ''}" data-a="togNote" title="${t('note.btn')}" aria-label="${t('note.btn')}">${icon('edit')}</button></div>
     <input type="text" class="note-in" value="${esc(e.note || '')}" placeholder="${t('note.ph')}" data-c="note" ${d}></div>`;
 }
@@ -1174,7 +1193,11 @@ A.addBlock = d => {
 };
 A.delBlock = d => confirmBox(t('block.delq'), t('delete'), () => { const c = getCtx(d.ctx); c.blocks.splice(c.blocks.findIndex(b => b.id === d.b), 1); c.after(); });
 A.moveBlock = d => { const c = getCtx(d.ctx); move(c.blocks, c.blocks.findIndex(b => b.id === d.b), +d.dir); c.after(); };
-C.blockRounds = (v, d) => { const b = findBlock(getCtx(d.ctx), d.b); b.rounds = num(v, 3, 1, 20); save(); };
+C.blockRounds = (v, d) => {
+  const c = getCtx(d.ctx), b = findBlock(c, d.b);
+  b.rounds = num(v, 3, 1, 20);
+  syncEntries(c.s); save(); render();
+};
 A.moveItem = d => { const b = findBlock(getCtx(d.ctx), d.b); move(b.items, b.items.findIndex(i => i.id === d.it), +d.dir); getCtx(d.ctx).after(); };
 A.delItem = d => { const c = getCtx(d.ctx), b = findBlock(c, d.b); b.items.splice(b.items.findIndex(i => i.id === d.it), 1); c.after(); };
 
@@ -1351,7 +1374,7 @@ A.nextStep = d => {
   if (i + 1 >= lad.length) return;
   applyStep(e, lad[i + 1]); save(); render();
 };
-C.reps = (v, d) => { getEntry(d.s, d.t, d.k).reps = v.trim(); save(); };
+C.reps = (v, d) => { const n = parseInt(v, 10); getEntry(d.s, d.t, d.k).reps = Number.isFinite(n) && n > 0 ? String(n) : ''; save(); };
 C.weight = (v, d) => { getEntry(d.s, d.t, d.k).weight = v.trim(); save(); };
 C.note = (v, d) => { getEntry(d.s, d.t, d.k).note = v.trim(); save(); };
 A.togW = (d, el) => {
