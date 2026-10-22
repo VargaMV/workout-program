@@ -3,7 +3,7 @@ let db;
 let _ix = null;
 
 const DEFAULTS = () => ({
-  v: 1,
+  v: 2,
   settings: {
     lang: 'hu', theme: 'auto', threshold: 4, vol: 0.7, lastBackup: null,
     timer: { rounds: 3, n: 3, work: 40, rest: 20, roundRest: 60, prep: 5, names: '' },
@@ -21,6 +21,12 @@ function normalizeDb(raw) {
     d.settings = { ...d.settings, ...s, timer: { ...d.settings.timer, ...(s.timer || {}) }, metro: { ...d.settings.metro, ...(s.metro || {}) } };
   }
   for (const x of d.trainees) delete x.active;
+  // v2: only ticked/edited rows count. Everything logged before that rule existed counts as done.
+  if ((raw.v || 1) < 2) {
+    const byId = new Map(d.sessions.map(s => [s.id, s])), today = todayStr();
+    for (const e of d.entries) { const s = byId.get(e.sessionId); if (e.done === undefined && s && s.date < today) e.done = true; }
+  }
+  d.v = 2;
   // Reps are a plain number now ("3x8" -> 8); anything else moves into the note. Rounds come from the block.
   const sess = new Map(d.sessions.map(s => [s.id, s]));
   for (const e of d.entries) {

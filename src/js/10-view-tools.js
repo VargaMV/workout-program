@@ -7,7 +7,7 @@ function initTimer(p) {
     const c = getCtx(p[0] + ':' + p[1]);
     const b = c && findBlock(c, p[2]);
     if (b && b.type === 'interval') {
-      cfg = { rounds: b.rounds, n: Math.max(1, b.items.length), work: b.work, rest: b.rest, roundRest: b.roundRest, prep: db.settings.timer.prep, names: b.items.map(itemName).join('\n') };
+      cfg = { rounds: b.rounds, n: Math.max(1, b.items.length), work: b.work, rest: b.rest, roundRest: b.roundRest, prep: db.settings.timer.prep, names: b.items.map(ivLabel).join('\n') };
       back = '/session/' + p[1];
     }
   }

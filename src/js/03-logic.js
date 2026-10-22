@@ -23,15 +23,27 @@ const wkey = e => (e.weighted ? String(e.weight || '').trim().replace(',', '.') 
 const sameExact = (a, b) => sameStage(a, b) && norm(a.reps) === norm(b.reps) && wkey(a) === wkey(b);
 const extraText = (e, short) => [e.reps ? (short || !e.rounds ? t('reps.n', { n: e.reps }) : `${e.rounds}×${e.reps}`) : '', e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
 
-// All set entries of a trainee for one exercise, newest session first.
+const ivLabel = it => [itemName(it), ...(it.alts || [])].join(' / ');
+
+// An entry counts as performed only if it was ticked or set by hand ("done") in a session that is not in the future.
+// Prefilled rows that were never touched (e.g. someone was absent) do not count for streaks, history or prefill.
+const performed = (e, s) => !!(e.done && isSet(e) && s.date <= todayStr());
+
+// Performed entries of a trainee for one exercise, newest session first.
 function history(tid, key) {
   const out = [];
   for (const e of db.entries) {
-    if (e.traineeId !== tid || e.ek !== key || !isSet(e)) continue;
+    if (e.traineeId !== tid || e.ek !== key) continue;
     const s = getSession(e.sessionId);
-    if (s) out.push({ e, s });
+    if (s && performed(e, s)) out.push({ e, s });
   }
   return out.sort((x, y) => sessionCmp(y.s, x.s));
+}
+// Streak an entry of session s would have: itself plus the performed ones before it.
+function streakFor(s, e) {
+  if (!e || !isSet(e)) return null;
+  const before = history(e.traineeId, e.ek).filter(x => x.s.id !== s.id && sessionCmp(x.s, s) < 0);
+  return streakAt([{ e, s }, ...before], 0);
 }
 
 // Consecutive attended sessions on the same stage (n) and on the same stage+reps+weight (exact), starting at index i.
@@ -60,11 +72,17 @@ function latest(tid, key) {
   if (i < 0) return null;
   return { e: h[i].e, s: h[i].s, streak: streakAt(h, i) };
 }
-// Entry of the nearest planned (future) session, if any.
+// Entry of the nearest planned session (today's not yet done, or a future one), if any.
 function planned(tid, key) {
   const today = todayStr();
-  const f = history(tid, key).filter(x => x.s.date > today);
-  return f.length ? f[f.length - 1].e : null;
+  let best = null;
+  for (const e of db.entries) {
+    if (e.traineeId !== tid || e.ek !== key || !isSet(e)) continue;
+    const s = getSession(e.sessionId);
+    if (!s || s.date < today || performed(e, s)) continue;
+    if (!best || sessionCmp(s, best.s) < 0) best = { e, s };
+  }
+  return best ? best.e : null;
 }
 // What the trainee did before this session (for prefill and "last time").
 function prevEntry(s, tid, key) {

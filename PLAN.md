@@ -79,3 +79,11 @@ Audio notes: Web Audio API, scheduled ahead on the audio clock (not setInterval)
 - **Személy edzés** = a group with `solo: true` and one member (new person or an existing member, so history is shared).
   Home lists "Csoportok" and "Személy edzés" separately; a solo group has no Tagok tab, no attendee chips, and its overview is a
   per-exercise list (current progression, N/M badge, path) instead of a matrix.
+
+## Update: performed entries, split interval spots, hosting
+- Only **performed** entries count (ticked, or stage/reps/weight set by hand, in a session dated today or earlier).
+  Prefilled-but-untouched rows (e.g. someone absent) are ignored by streaks, history, "last time" and prefill.
+  Planned sessions (future) have no tick; today's untouched rows show as the "→ next" line. Data v2 migration marks
+  everything logged before this rule (sessions before today) as done.
+- Interval items can have alternatives (`item.alts`), shown as "Kötélugrás / Burpee" for a split group.
+- GitHub Pages via `.github/workflows/pages.yml`; `dist/` also gets a web manifest, icons and a network-first service worker.

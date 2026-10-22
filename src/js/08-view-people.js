@@ -4,8 +4,9 @@ V.trainee = ([id]) => {
   if (!tr) return notFound();
   const today = todayStr();
   const groups = db.groups.filter(g => g.traineeIds.includes(id));
-  const mine = db.entries.filter(e => e.traineeId === id && isSet(e) && getSession(e.sessionId));
-  const attended = db.sessions.filter(s => s.attendeeIds.includes(id) && s.date <= today).sort(sessionCmp).reverse();
+  const mine = db.entries.filter(e => e.traineeId === id && getSession(e.sessionId) && performed(e, getSession(e.sessionId)));
+  const doneIn = new Set(mine.map(e => e.sessionId));
+  const attended = db.sessions.filter(s => doneIn.has(s.id) && s.date <= today).sort(sessionCmp).reverse();
   const keys = [...new Set(mine.map(e => e.ek))].sort((a, b) => exName(a).localeCompare(exName(b), locale()));
   const rows = keys.map(k => {
     const L = latest(id, k), path = stagePath(id, k);
@@ -13,7 +14,7 @@ V.trainee = ([id]) => {
       <div class="path">${path.map((p, i) => `${i ? `<span class="a">→</span>` : ''}<span class="p">${esc(entryLabel(p.e))} (${p.n})</span>`).join('')}</div></div>`;
   }).join('');
   const days = attended.map(s => {
-    const es = db.entries.filter(e => e.sessionId === s.id && e.traineeId === id && isSet(e));
+    const es = mine.filter(e => e.sessionId === s.id);
     return `<div class="tl-day"><div class="d"><a href="#/session/${s.id}">${fmtLong(s.date)}</a></div>${es.map(e => `<div class="tl-ent"><span>${esc(exName(e.ek))}</span><span>${esc(entryLabel(e))}${extraText(e) ? ' · ' + esc(extraText(e)) : ''}</span></div>${e.note ? `<div class="tl-note">“${esc(e.note)}”</div>` : ''}`).join('') || `<div class="muted">${t('attended')}</div>`}</div>`;
   }).join('');
   const info = `<div class="card"><div class="muted">${groups.map(g => esc(g.name)).join(', ') || t('nogroup')} · ${t('n.sessions', { n: attended.length })}</div>${tr.note ? `<div class="warn-note" style="margin-top:6px">${esc(tr.note)}</div>` : ''}</div>`;

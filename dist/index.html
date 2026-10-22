@@ -7,6 +7,11 @@
 <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f1214" media="(prefers-color-scheme: dark)">
 <title>Edzéskövető</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Edzés">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f8a5f'/%3E%3Cpath d='M14 40l12-16 8 10 6-7 10 13z' fill='%23fff'/%3E%3C/svg%3E">
 <style>
 :root {
@@ -445,6 +450,12 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 
 .banner.bad { background: var(--danger-soft); color: var(--danger); }
 
+/* interval alternatives ("Kötélugrás / Burpee") */
+.iv-name { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.alt-chip { display: inline-flex; align-items: center; gap: 2px; border: 0; background: var(--surface2); border-radius: 4px; padding: 1px 6px; font: inherit; cursor: pointer; color: inherit; }
+.alt-chip .i { width: 12px; height: 12px; color: var(--ink2); }
+.alt-add { border: 1px dashed var(--line); background: none; border-radius: 4px; padding: 0 6px; font: inherit; font-size: .8rem; color: var(--accent); cursor: pointer; min-height: 24px; }
+
 </style>
 </head>
 <body>
@@ -551,6 +562,7 @@ const S = {
   'stage.unset': ['Nincs megadva', 'Not set'], 'stage.next': ['Következő lépcsőfok', 'Next step'], 'stage.clear': ['Törlés', 'Clear'],
   'stage.noladder': ['Ehhez a gyakorlathoz nincs lépcsősor, írd be szabadon.', 'This exercise has no ladder; type it freely.'],
   'stage.free': ['Szabad szöveg (pl. sérülés miatti variáció)', 'Free text (e.g. an easier variation for an injury)'], 'stage.free.ph': ['pl. térdelő fekvőtámasz', 'e.g. knee push-up'],
+  'alt.add': ['Alternatív gyakorlat ugyanerre a helyre', 'Alternative exercise for the same spot'],
   'done.btn': ['Kész', 'Done'],
   'reps.ph': ['ism.', 'reps'], 'weighted': ['Súlyozott', 'Weighted'], 'note.btn': ['Megjegyzés', 'Note'], 'note.ph': ['Megjegyzés (opcionális)', 'Note (optional)'],
   'brief.none': ['', ''],
@@ -603,7 +615,7 @@ let db;
 let _ix = null;
 
 const DEFAULTS = () => ({
-  v: 1,
+  v: 2,
   settings: {
     lang: 'hu', theme: 'auto', threshold: 4, vol: 0.7, lastBackup: null,
     timer: { rounds: 3, n: 3, work: 40, rest: 20, roundRest: 60, prep: 5, names: '' },
@@ -621,6 +633,12 @@ function normalizeDb(raw) {
     d.settings = { ...d.settings, ...s, timer: { ...d.settings.timer, ...(s.timer || {}) }, metro: { ...d.settings.metro, ...(s.metro || {}) } };
   }
   for (const x of d.trainees) delete x.active;
+  // v2: only ticked/edited rows count. Everything logged before that rule existed counts as done.
+  if ((raw.v || 1) < 2) {
+    const byId = new Map(d.sessions.map(s => [s.id, s])), today = todayStr();
+    for (const e of d.entries) { const s = byId.get(e.sessionId); if (e.done === undefined && s && s.date < today) e.done = true; }
+  }
+  d.v = 2;
   // Reps are a plain number now ("3x8" -> 8); anything else moves into the note. Rounds come from the block.
   const sess = new Map(d.sessions.map(s => [s.id, s]));
   for (const e of d.entries) {
@@ -748,15 +766,27 @@ const wkey = e => (e.weighted ? String(e.weight || '').trim().replace(',', '.') 
 const sameExact = (a, b) => sameStage(a, b) && norm(a.reps) === norm(b.reps) && wkey(a) === wkey(b);
 const extraText = (e, short) => [e.reps ? (short || !e.rounds ? t('reps.n', { n: e.reps }) : `${e.rounds}×${e.reps}`) : '', e.weighted ? (wkey(e) ? `+${wkey(e)} kg` : '+kg') : ''].filter(Boolean).join(' ');
 
-// All set entries of a trainee for one exercise, newest session first.
+const ivLabel = it => [itemName(it), ...(it.alts || [])].join(' / ');
+
+// An entry counts as performed only if it was ticked or set by hand ("done") in a session that is not in the future.
+// Prefilled rows that were never touched (e.g. someone was absent) do not count for streaks, history or prefill.
+const performed = (e, s) => !!(e.done && isSet(e) && s.date <= todayStr());
+
+// Performed entries of a trainee for one exercise, newest session first.
 function history(tid, key) {
   const out = [];
   for (const e of db.entries) {
-    if (e.traineeId !== tid || e.ek !== key || !isSet(e)) continue;
+    if (e.traineeId !== tid || e.ek !== key) continue;
     const s = getSession(e.sessionId);
-    if (s) out.push({ e, s });
+    if (s && performed(e, s)) out.push({ e, s });
   }
   return out.sort((x, y) => sessionCmp(y.s, x.s));
+}
+// Streak an entry of session s would have: itself plus the performed ones before it.
+function streakFor(s, e) {
+  if (!e || !isSet(e)) return null;
+  const before = history(e.traineeId, e.ek).filter(x => x.s.id !== s.id && sessionCmp(x.s, s) < 0);
+  return streakAt([{ e, s }, ...before], 0);
 }
 
 // Consecutive attended sessions on the same stage (n) and on the same stage+reps+weight (exact), starting at index i.
@@ -785,11 +815,17 @@ function latest(tid, key) {
   if (i < 0) return null;
   return { e: h[i].e, s: h[i].s, streak: streakAt(h, i) };
 }
-// Entry of the nearest planned (future) session, if any.
+// Entry of the nearest planned session (today's not yet done, or a future one), if any.
 function planned(tid, key) {
   const today = todayStr();
-  const f = history(tid, key).filter(x => x.s.date > today);
-  return f.length ? f[f.length - 1].e : null;
+  let best = null;
+  for (const e of db.entries) {
+    if (e.traineeId !== tid || e.ek !== key || !isSet(e)) continue;
+    const s = getSession(e.sessionId);
+    if (!s || s.date < today || performed(e, s)) continue;
+    if (!best || sessionCmp(s, best.s) < 0) best = { e, s };
+  }
+  return best ? best.e : null;
 }
 // What the trainee did before this session (for prefill and "last time").
 function prevEntry(s, tid, key) {
@@ -1179,7 +1215,7 @@ function soloOverview(g) {
 
 function membersTab(g) {
   const ms = activeMembers(g);
-  const rows = ms.map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}" data-g="${g.id}"><span class="grow"><b>${esc(x.name)}</b>${x.note ? `<div class="muted warn-note">${esc(x.note)}</div>` : ''}</span>${icon('edit')}</button>`).join('');
+  const rows = ms.map(x => `<div class="list-row"><a class="grow" href="#/trainee/${x.id}"><b>${esc(x.name)}</b>${x.note ? `<div class="muted warn-note">${esc(x.note)}</div>` : ''}</a><button class="icon-btn" data-a="editTrainee" data-id="${x.id}" data-g="${g.id}" aria-label="${t('edit')}">${icon('edit')}</button></div>`).join('');
   const hasOthers = db.trainees.some(x => !g.traineeIds.includes(x.id));
   return `<div class="rows">${rows || `<p class="muted">${t('matrix.nomembers')}</p>`}</div>
     <button class="btn primary full" data-a="editTrainee" data-g="${g.id}">${icon('plus')} ${t('member.new')}</button>
@@ -1263,7 +1299,13 @@ function itemControls(cs, b, it, ii) {
   const d = `${dctx(cs, b)} data-it="${it.id}"`;
   return `<div class="item-a"><button class="icon-btn sm" data-a="moveItem" ${d} data-dir="-1" ${ii === 0 ? 'disabled' : ''} aria-label="${t('up')}">${icon('up')}</button><button class="icon-btn sm" data-a="moveItem" ${d} data-dir="1" ${ii === b.items.length - 1 ? 'disabled' : ''} aria-label="${t('down')}">${icon('down')}</button><button class="icon-btn sm" data-a="delItem" ${d} aria-label="${t('delete')}">${icon('x')}</button></div>`;
 }
-const itemLineHtml = (cs, b, it, ii) => `<div class="iv-item"><span>${ii + 1}. ${esc(itemName(it))}${b.type === 'strength' && !it.exId ? `<span class="tag">${t('freetext')}</span>` : ''}</span>${itemControls(cs, b, it, ii)}</div>`;
+const itemLineHtml = (cs, b, it, ii) => {
+  if (b.type !== 'interval') return `<div class="iv-item"><span>${ii + 1}. ${esc(itemName(it))}${!it.exId ? `<span class="tag">${t('freetext')}</span>` : ''}</span>${itemControls(cs, b, it, ii)}</div>`;
+  // interval spot: one exercise, optionally with alternatives when the group is split (not enough equipment)
+  const d = `${dctx(cs, b)} data-it="${it.id}"`;
+  const alts = (it.alts || []).map((a, i) => `<button class="alt-chip" data-a="delAlt" ${d} data-n="${i}" title="${t('delete')}">/ ${esc(a)} ${icon('x')}</button>`).join('');
+  return `<div class="iv-item"><span class="iv-name">${ii + 1}. ${esc(itemName(it))}${alts}<button class="alt-add" data-a="addAlt" ${d} title="${t('alt.add')}">+ /</button></span>${itemControls(cs, b, it, ii)}</div>`;
+};
 
 const blockTitle = (b, bi) => `${bi + 1}. ${t(b.type === 'strength' ? 'block.strength' : 'block.interval')}`;
 const blockNames = b => b.items.map(itemName).join(', ');
@@ -1275,7 +1317,7 @@ function logHtml(s) {
   const openId = s.blocks.some(b => b.id === open) ? open : open === '' ? '' : s.blocks[0].id;
   return `<div class="blocks">${s.blocks.map((b, bi) => {
     const on = b.id === openId, strength = b.type === 'strength';
-    const head = `<button class="block-h acc" data-a="openBlock" data-s="${s.id}" data-b="${b.id}"><span class="acc-t"><span class="block-t"><span class="bn">${bi + 1}</span><strong>${t(strength ? 'block.strength' : 'block.interval')}</strong><span class="muted">${t('n.rounds', { n: b.rounds })}</span></span>${on ? '' : `<span class="muted acc-s">${esc(blockNames(b))}</span>`}</span>${strength ? `<span class="cnt bc">${blockDone(s, b)}</span>` : ''}${icon(on ? 'up' : 'down')}</button>`;
+    const head = `<button class="block-h acc" data-a="openBlock" data-s="${s.id}" data-b="${b.id}"><span class="acc-t"><span class="block-t"><span class="bn">${bi + 1}</span><strong>${t(strength ? 'block.strength' : 'block.interval')}</strong><span class="muted">${t('n.rounds', { n: b.rounds })}</span></span>${on ? '' : `<span class="muted acc-s">${esc(blockNames(b))}</span>`}</span>${strength && s.date <= todayStr() ? `<span class="cnt bc">${blockDone(s, b)}</span>` : ''}${icon(on ? 'up' : 'down')}</button>`;
     let body = '';
     if (on) {
       if (strength) {
@@ -1284,11 +1326,11 @@ function logHtml(s) {
           const key = ek(it);
           const rows = people.map(tr => traineeRow(s, tr, key, b.rounds)).join('') || `<p class="muted">${t('session.noatt')}</p>`;
           const es = people.map(tr => getEntry(s.id, tr.id, key)).filter(Boolean);
-          return `<div class="item"><div class="item-h"><div class="item-n">${esc(itemName(it))}${it.exId ? '' : `<span class="tag">${t('freetext')}</span>`}</div><span class="cnt">${es.filter(e => e.done).length}/${es.length}</span></div>${rows}</div>`;
+          return `<div class="item"><div class="item-h"><div class="item-n">${esc(itemName(it))}${it.exId ? '' : `<span class="tag">${t('freetext')}</span>`}</div>${s.date <= todayStr() ? `<span class="cnt">${es.filter(e => e.done).length}/${es.length}</span>` : ''}</div>${rows}</div>`;
         }).join('');
         body = `<div class="block-b">${items || `<p class="muted">${t('block.empty')}</p>`}</div>`;
       } else {
-        body = `<a class="block-top" href="#/timer/s/${s.id}/${b.id}">${icon('timer')} ${t('timer.start')}</a><div class="block-b"><div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}</div>${b.items.map((it, i) => `<div class="iv-item"><span>${i + 1}. ${esc(itemName(it))}</span></div>`).join('') || `<p class="muted">${t('block.empty')}</p>`}</div>`;
+        body = `<a class="block-top" href="#/timer/s/${s.id}/${b.id}">${icon('timer')} ${t('timer.start')}</a><div class="block-b"><div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}</div>${b.items.map((it, i) => `<div class="iv-item"><span>${i + 1}. ${esc(ivLabel(it))}</span></div>`).join('') || `<p class="muted">${t('block.empty')}</p>`}</div>`;
       }
     }
     return `<section class="block ${strength ? '' : 'iv'}">${head}${body}</section>`;
@@ -1305,8 +1347,8 @@ A.openBlock = d => { (ui.openBlock = ui.openBlock || {})[d.s] = (ui.openBlock[d.
 function itemGroupsHtml(s, it, people) {
   const key = ek(it);
   const list = people.map(tr => {
-    const e = getEntry(s.id, tr.id, key), h = history(tr.id, key);
-    return { t: tr, e, streak: e && isSet(e) ? streakAt(h, h.findIndex(x => x.e === e)) : null };
+    const e = getEntry(s.id, tr.id, key);
+    return { t: tr, e, streak: streakFor(s, e) };
   });
   const { groups, none } = groupByStage(list, key);
   return groups.map(gr => `<div class="bgroup"><div class="bg-l">${esc(gr.label)} <span class="tag">${gr.items.length}</span></div><div class="bg-n">${gr.items.map(x => personHtml(x, true)).join('')}</div></div>`).join('') +
@@ -1323,7 +1365,7 @@ function programHtml(s) {
     }
     return `<section class="brief-item iv"><h2>${bi + 1}. ${t('block.interval')} <span class="tag">${t('n.rounds', { n: b.rounds })}</span></h2>
       <div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}</div>
-      <div class="chips">${b.items.map(it => `<span class="tag">${esc(itemName(it))}</span>`).join('')}</div>
+      <div class="chips">${b.items.map(it => `<span class="tag">${esc(ivLabel(it))}</span>`).join('')}</div>
       <div class="row"><a class="btn small primary" href="#/timer/s/${s.id}/${b.id}">${icon('timer')} ${t('timer.start')}</a></div></section>`;
   }).join('');
   return `${s.note ? `<p class="muted"><i>${esc(s.note)}</i></p>` : ''}${s.date > todayStr() ? `<p class="muted">${t('session.planned')}</p>` : ''}
@@ -1339,16 +1381,15 @@ function traineeRow(s, tr, key, rounds) {
   const e = getEntry(s.id, tr.id, key);
   if (!e) return '';
   const prev = prevEntry(s, tr.id, key);
-  const h = history(tr.id, key);
-  const sk = streakAt(h, h.findIndex(x => x.e === e));
-  const set = isSet(e);
+  const sk = streakFor(s, e);
+  const set = isSet(e), future = s.date > todayStr();
   const changed = set && prev && !sameStage(e, prev);
   const lad = ladder(key);
   const idx = e.progId ? lad.findIndex(x => x.id === e.progId) : -1;
   const canUp = lad.length && !e.text && idx < lad.length - 1;
   const d = `data-s="${s.id}" data-t="${tr.id}" data-k="${esc(key)}"`;
   const wOn = !!e.weighted;
-  return `<div class="trow ${e.note ? 'show-note' : ''} ${wOn ? 'show-w' : ''} ${e.done ? 'done' : ''}"><div class="tn"><span class="tn-l"><button class="donebtn ${e.done ? 'on' : ''}" data-a="togDone" ${d} title="${t('done.btn')}" aria-label="${t('done.btn')}">${icon('check')}</button><a href="#/trainee/${tr.id}">${esc(tr.name)}</a></span>${tr.note ? `<span class="prev warn-note">${esc(tr.note)}</span>` : ''}<span class="prev">${prev ? t('last') + ': ' + esc(entryLabel(prev)) + (extraText(prev) ? ' · ' + esc(extraText(prev)) : '') : t('first')}</span></div>
+  return `<div class="trow ${e.note ? 'show-note' : ''} ${wOn ? 'show-w' : ''} ${e.done ? 'done' : ''}"><div class="tn"><span class="tn-l">${future ? '' : `<button class="donebtn ${e.done ? 'on' : ''}" data-a="togDone" ${d} title="${t('done.btn')}" aria-label="${t('done.btn')}">${icon('check')}</button>`}<a href="#/trainee/${tr.id}">${esc(tr.name)}</a></span>${tr.note ? `<span class="prev warn-note">${esc(tr.note)}</span>` : ''}<span class="prev">${prev ? t('last') + ': ' + esc(entryLabel(prev)) + (extraText(prev) ? ' · ' + esc(extraText(prev)) : '') : t('first')}</span></div>
     <div class="tctl"><button class="stage ${set ? '' : 'unset'} ${changed ? 'changed' : ''}" data-a="stage" ${d}><span>${set ? esc(entryLabel(e)) : t('stage.unset')}</span><span class="badges">${set ? streakChips(sk) : ''}</span></button>${canUp ? `<button class="mini" data-a="nextStep" ${d} aria-label="${t('stage.next')}" title="${t('stage.next')}">${icon('up')}</button>` : ''}</div>
     <div class="tmeta"><span class="rr">${rounds}×</span><input type="number" inputmode="numeric" min="0" max="999" class="reps" value="${esc(e.reps || '')}" placeholder="${t('reps.ph')}" data-c="reps" ${d}>
       <button class="kgbtn ${wOn ? 'on' : ''}" data-a="togW" ${d} title="${t('weighted')}">+kg</button>
@@ -1370,6 +1411,16 @@ C.blockRounds = (v, d) => {
   b.rounds = num(v, 3, 1, 20);
   syncEntries(c.s); save(); render();
 };
+A.addAlt = d => openPicker({
+  title: t('alt.add'), allowText: true, allowNew: false, names: intervalNames, have: () => new Set(),
+  add: (ids, texts) => {
+    const c = getCtx(d.ctx), it = findBlock(c, d.b).items.find(i => i.id === d.it);
+    const known = [itemName(it), ...(it.alts || [])].map(norm);
+    it.alts = [...(it.alts || []), ...texts.filter(x => !known.includes(norm(x)))];
+    c.after();
+  },
+});
+A.delAlt = d => { const c = getCtx(d.ctx), it = findBlock(c, d.b).items.find(i => i.id === d.it); it.alts.splice(+d.n, 1); c.after(); };
 A.moveItem = d => { const b = findBlock(getCtx(d.ctx), d.b); move(b.items, b.items.findIndex(i => i.id === d.it), +d.dir); getCtx(d.ctx).after(); };
 A.delItem = d => { const c = getCtx(d.ctx), b = findBlock(c, d.b); b.items.splice(b.items.findIndex(i => i.id === d.it), 1); c.after(); };
 
@@ -1415,7 +1466,7 @@ A.addItem = d => {
 // Names used in earlier interval blocks, most used first (interval exercises are not tracked, so they stay free text).
 function intervalNames() {
   const cnt = new Map();
-  for (const s of db.sessions) for (const b of s.blocks) if (b.type === 'interval') for (const it of b.items) { const n = itemName(it); cnt.set(n, (cnt.get(n) || 0) + 1); }
+  for (const s of db.sessions) for (const b of s.blocks) if (b.type === 'interval') for (const it of b.items) for (const n of [itemName(it), ...(it.alts || [])]) cnt.set(n, (cnt.get(n) || 0) + 1);
   return [...cnt.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], locale())).map(x => x[0]);
 }
 function pickResults(q) {
@@ -1533,14 +1584,17 @@ A.stage = d => {
     <div class="row between"><button type="button" class="btn ghost-danger" data-a="stageClear" data-s="${s.id}" data-t="${tr.id}" data-k="${esc(d.k)}">${t('stage.clear')}</button><span class="row"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></span></div></form>`);
 };
 const applyStep = (e, st) => { delete e.text; e.progId = st.id; e.label = st.label; };
+// Editing a row by hand marks it performed, except in planned (future) sessions.
+const canDone = e => { const s = getSession(e.sessionId); return !!s && s.date <= todayStr(); };
+const touch = e => { if (canDone(e)) e.done = true; };
 A.stageSet = d => {
   const e = getEntry(d.s, d.t, d.k), st = ladder(d.k).find(x => x.id === d.id);
-  applyStep(e, st); e.done = true; save(); closeSheet(); render();
+  applyStep(e, st); touch(e); save(); closeSheet(); render();
 };
 F.stageText = (fd, d) => {
   const e = getEntry(d.s, d.t, d.k), text = String(fd.get('text') || '').trim();
   if (!text) { closeSheet(); return; }
-  delete e.progId; delete e.label; e.text = text; e.done = true; save(); closeSheet(); render();
+  delete e.progId; delete e.label; e.text = text; touch(e); save(); closeSheet(); render();
 };
 A.stageClear = d => {
   const e = getEntry(d.s, d.t, d.k);
@@ -1550,13 +1604,15 @@ A.nextStep = d => {
   const e = getEntry(d.s, d.t, d.k), lad = ladder(d.k);
   const i = e.progId ? lad.findIndex(x => x.id === e.progId) : -1;
   if (i + 1 >= lad.length) return;
-  applyStep(e, lad[i + 1]); e.done = true; save(); render();
+  applyStep(e, lad[i + 1]); touch(e); save(); render();
 };
 // A row counts as done once its reps/weight/stage were set by hand (or ticked), not just prefilled from last time.
 function setRowDone(row, e, on) {
+  if (on && !canDone(e)) return;
   e.done = on;
   row.classList.toggle('done', on);
-  row.querySelector('.donebtn').classList.toggle('on', on);
+  const btn = row.querySelector('.donebtn');
+  if (btn) btn.classList.toggle('on', on);
   refreshDone();
 }
 function refreshDone() {
@@ -1754,8 +1810,9 @@ V.trainee = ([id]) => {
   if (!tr) return notFound();
   const today = todayStr();
   const groups = db.groups.filter(g => g.traineeIds.includes(id));
-  const mine = db.entries.filter(e => e.traineeId === id && isSet(e) && getSession(e.sessionId));
-  const attended = db.sessions.filter(s => s.attendeeIds.includes(id) && s.date <= today).sort(sessionCmp).reverse();
+  const mine = db.entries.filter(e => e.traineeId === id && getSession(e.sessionId) && performed(e, getSession(e.sessionId)));
+  const doneIn = new Set(mine.map(e => e.sessionId));
+  const attended = db.sessions.filter(s => doneIn.has(s.id) && s.date <= today).sort(sessionCmp).reverse();
   const keys = [...new Set(mine.map(e => e.ek))].sort((a, b) => exName(a).localeCompare(exName(b), locale()));
   const rows = keys.map(k => {
     const L = latest(id, k), path = stagePath(id, k);
@@ -1763,7 +1820,7 @@ V.trainee = ([id]) => {
       <div class="path">${path.map((p, i) => `${i ? `<span class="a">→</span>` : ''}<span class="p">${esc(entryLabel(p.e))} (${p.n})</span>`).join('')}</div></div>`;
   }).join('');
   const days = attended.map(s => {
-    const es = db.entries.filter(e => e.sessionId === s.id && e.traineeId === id && isSet(e));
+    const es = mine.filter(e => e.sessionId === s.id);
     return `<div class="tl-day"><div class="d"><a href="#/session/${s.id}">${fmtLong(s.date)}</a></div>${es.map(e => `<div class="tl-ent"><span>${esc(exName(e.ek))}</span><span>${esc(entryLabel(e))}${extraText(e) ? ' · ' + esc(extraText(e)) : ''}</span></div>${e.note ? `<div class="tl-note">“${esc(e.note)}”</div>` : ''}`).join('') || `<div class="muted">${t('attended')}</div>`}</div>`;
   }).join('');
   const info = `<div class="card"><div class="muted">${groups.map(g => esc(g.name)).join(', ') || t('nogroup')} · ${t('n.sessions', { n: attended.length })}</div>${tr.note ? `<div class="warn-note" style="margin-top:6px">${esc(tr.note)}</div>` : ''}</div>`;
@@ -1997,7 +2054,7 @@ function initTimer(p) {
     const c = getCtx(p[0] + ':' + p[1]);
     const b = c && findBlock(c, p[2]);
     if (b && b.type === 'interval') {
-      cfg = { rounds: b.rounds, n: Math.max(1, b.items.length), work: b.work, rest: b.rest, roundRest: b.roundRest, prep: db.settings.timer.prep, names: b.items.map(itemName).join('\n') };
+      cfg = { rounds: b.rounds, n: Math.max(1, b.items.length), work: b.work, rest: b.rest, roundRest: b.roundRest, prep: db.settings.timer.prep, names: b.items.map(ivLabel).join('\n') };
       back = '/session/' + p[1];
     }
   }
@@ -2237,6 +2294,8 @@ A.mAccent = d => { db.settings.metro.accent = +d.v; save(); mRestart(); renderMe
 load();
 applyTheme();
 render();
+// hosted version (https): cache the app for offline use; does nothing when opened as a local file
+if (location.protocol === 'https:' && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 </script>
 </body>

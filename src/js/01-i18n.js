@@ -70,6 +70,7 @@ const S = {
   'stage.unset': ['Nincs megadva', 'Not set'], 'stage.next': ['Következő lépcsőfok', 'Next step'], 'stage.clear': ['Törlés', 'Clear'],
   'stage.noladder': ['Ehhez a gyakorlathoz nincs lépcsősor, írd be szabadon.', 'This exercise has no ladder; type it freely.'],
   'stage.free': ['Szabad szöveg (pl. sérülés miatti variáció)', 'Free text (e.g. an easier variation for an injury)'], 'stage.free.ph': ['pl. térdelő fekvőtámasz', 'e.g. knee push-up'],
+  'alt.add': ['Alternatív gyakorlat ugyanerre a helyre', 'Alternative exercise for the same spot'],
   'done.btn': ['Kész', 'Done'],
   'reps.ph': ['ism.', 'reps'], 'weighted': ['Súlyozott', 'Weighted'], 'note.btn': ['Megjegyzés', 'Note'], 'note.ph': ['Megjegyzés (opcionális)', 'Note (optional)'],
   'brief.none': ['', ''],

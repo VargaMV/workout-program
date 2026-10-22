@@ -33,7 +33,13 @@ function itemControls(cs, b, it, ii) {
   const d = `${dctx(cs, b)} data-it="${it.id}"`;
   return `<div class="item-a"><button class="icon-btn sm" data-a="moveItem" ${d} data-dir="-1" ${ii === 0 ? 'disabled' : ''} aria-label="${t('up')}">${icon('up')}</button><button class="icon-btn sm" data-a="moveItem" ${d} data-dir="1" ${ii === b.items.length - 1 ? 'disabled' : ''} aria-label="${t('down')}">${icon('down')}</button><button class="icon-btn sm" data-a="delItem" ${d} aria-label="${t('delete')}">${icon('x')}</button></div>`;
 }
-const itemLineHtml = (cs, b, it, ii) => `<div class="iv-item"><span>${ii + 1}. ${esc(itemName(it))}${b.type === 'strength' && !it.exId ? `<span class="tag">${t('freetext')}</span>` : ''}</span>${itemControls(cs, b, it, ii)}</div>`;
+const itemLineHtml = (cs, b, it, ii) => {
+  if (b.type !== 'interval') return `<div class="iv-item"><span>${ii + 1}. ${esc(itemName(it))}${!it.exId ? `<span class="tag">${t('freetext')}</span>` : ''}</span>${itemControls(cs, b, it, ii)}</div>`;
+  // interval spot: one exercise, optionally with alternatives when the group is split (not enough equipment)
+  const d = `${dctx(cs, b)} data-it="${it.id}"`;
+  const alts = (it.alts || []).map((a, i) => `<button class="alt-chip" data-a="delAlt" ${d} data-n="${i}" title="${t('delete')}">/ ${esc(a)} ${icon('x')}</button>`).join('');
+  return `<div class="iv-item"><span class="iv-name">${ii + 1}. ${esc(itemName(it))}${alts}<button class="alt-add" data-a="addAlt" ${d} title="${t('alt.add')}">+ /</button></span>${itemControls(cs, b, it, ii)}</div>`;
+};
 
 const blockTitle = (b, bi) => `${bi + 1}. ${t(b.type === 'strength' ? 'block.strength' : 'block.interval')}`;
 const blockNames = b => b.items.map(itemName).join(', ');
@@ -45,7 +51,7 @@ function logHtml(s) {
   const openId = s.blocks.some(b => b.id === open) ? open : open === '' ? '' : s.blocks[0].id;
   return `<div class="blocks">${s.blocks.map((b, bi) => {
     const on = b.id === openId, strength = b.type === 'strength';
-    const head = `<button class="block-h acc" data-a="openBlock" data-s="${s.id}" data-b="${b.id}"><span class="acc-t"><span class="block-t"><span class="bn">${bi + 1}</span><strong>${t(strength ? 'block.strength' : 'block.interval')}</strong><span class="muted">${t('n.rounds', { n: b.rounds })}</span></span>${on ? '' : `<span class="muted acc-s">${esc(blockNames(b))}</span>`}</span>${strength ? `<span class="cnt bc">${blockDone(s, b)}</span>` : ''}${icon(on ? 'up' : 'down')}</button>`;
+    const head = `<button class="block-h acc" data-a="openBlock" data-s="${s.id}" data-b="${b.id}"><span class="acc-t"><span class="block-t"><span class="bn">${bi + 1}</span><strong>${t(strength ? 'block.strength' : 'block.interval')}</strong><span class="muted">${t('n.rounds', { n: b.rounds })}</span></span>${on ? '' : `<span class="muted acc-s">${esc(blockNames(b))}</span>`}</span>${strength && s.date <= todayStr() ? `<span class="cnt bc">${blockDone(s, b)}</span>` : ''}${icon(on ? 'up' : 'down')}</button>`;
     let body = '';
     if (on) {
       if (strength) {
@@ -54,11 +60,11 @@ function logHtml(s) {
           const key = ek(it);
           const rows = people.map(tr => traineeRow(s, tr, key, b.rounds)).join('') || `<p class="muted">${t('session.noatt')}</p>`;
           const es = people.map(tr => getEntry(s.id, tr.id, key)).filter(Boolean);
-          return `<div class="item"><div class="item-h"><div class="item-n">${esc(itemName(it))}${it.exId ? '' : `<span class="tag">${t('freetext')}</span>`}</div><span class="cnt">${es.filter(e => e.done).length}/${es.length}</span></div>${rows}</div>`;
+          return `<div class="item"><div class="item-h"><div class="item-n">${esc(itemName(it))}${it.exId ? '' : `<span class="tag">${t('freetext')}</span>`}</div>${s.date <= todayStr() ? `<span class="cnt">${es.filter(e => e.done).length}/${es.length}</span>` : ''}</div>${rows}</div>`;
         }).join('');
         body = `<div class="block-b">${items || `<p class="muted">${t('block.empty')}</p>`}</div>`;
       } else {
-        body = `<a class="block-top" href="#/timer/s/${s.id}/${b.id}">${icon('timer')} ${t('timer.start')}</a><div class="block-b"><div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}</div>${b.items.map((it, i) => `<div class="iv-item"><span>${i + 1}. ${esc(itemName(it))}</span></div>`).join('') || `<p class="muted">${t('block.empty')}</p>`}</div>`;
+        body = `<a class="block-top" href="#/timer/s/${s.id}/${b.id}">${icon('timer')} ${t('timer.start')}</a><div class="block-b"><div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}</div>${b.items.map((it, i) => `<div class="iv-item"><span>${i + 1}. ${esc(ivLabel(it))}</span></div>`).join('') || `<p class="muted">${t('block.empty')}</p>`}</div>`;
       }
     }
     return `<section class="block ${strength ? '' : 'iv'}">${head}${body}</section>`;
@@ -75,8 +81,8 @@ A.openBlock = d => { (ui.openBlock = ui.openBlock || {})[d.s] = (ui.openBlock[d.
 function itemGroupsHtml(s, it, people) {
   const key = ek(it);
   const list = people.map(tr => {
-    const e = getEntry(s.id, tr.id, key), h = history(tr.id, key);
-    return { t: tr, e, streak: e && isSet(e) ? streakAt(h, h.findIndex(x => x.e === e)) : null };
+    const e = getEntry(s.id, tr.id, key);
+    return { t: tr, e, streak: streakFor(s, e) };
   });
   const { groups, none } = groupByStage(list, key);
   return groups.map(gr => `<div class="bgroup"><div class="bg-l">${esc(gr.label)} <span class="tag">${gr.items.length}</span></div><div class="bg-n">${gr.items.map(x => personHtml(x, true)).join('')}</div></div>`).join('') +
@@ -93,7 +99,7 @@ function programHtml(s) {
     }
     return `<section class="brief-item iv"><h2>${bi + 1}. ${t('block.interval')} <span class="tag">${t('n.rounds', { n: b.rounds })}</span></h2>
       <div class="iv-sum">${t('iv.sum', { w: b.work, r: b.rest, z: b.roundRest, n: b.rounds })}</div>
-      <div class="chips">${b.items.map(it => `<span class="tag">${esc(itemName(it))}</span>`).join('')}</div>
+      <div class="chips">${b.items.map(it => `<span class="tag">${esc(ivLabel(it))}</span>`).join('')}</div>
       <div class="row"><a class="btn small primary" href="#/timer/s/${s.id}/${b.id}">${icon('timer')} ${t('timer.start')}</a></div></section>`;
   }).join('');
   return `${s.note ? `<p class="muted"><i>${esc(s.note)}</i></p>` : ''}${s.date > todayStr() ? `<p class="muted">${t('session.planned')}</p>` : ''}
@@ -109,16 +115,15 @@ function traineeRow(s, tr, key, rounds) {
   const e = getEntry(s.id, tr.id, key);
   if (!e) return '';
   const prev = prevEntry(s, tr.id, key);
-  const h = history(tr.id, key);
-  const sk = streakAt(h, h.findIndex(x => x.e === e));
-  const set = isSet(e);
+  const sk = streakFor(s, e);
+  const set = isSet(e), future = s.date > todayStr();
   const changed = set && prev && !sameStage(e, prev);
   const lad = ladder(key);
   const idx = e.progId ? lad.findIndex(x => x.id === e.progId) : -1;
   const canUp = lad.length && !e.text && idx < lad.length - 1;
   const d = `data-s="${s.id}" data-t="${tr.id}" data-k="${esc(key)}"`;
   const wOn = !!e.weighted;
-  return `<div class="trow ${e.note ? 'show-note' : ''} ${wOn ? 'show-w' : ''} ${e.done ? 'done' : ''}"><div class="tn"><span class="tn-l"><button class="donebtn ${e.done ? 'on' : ''}" data-a="togDone" ${d} title="${t('done.btn')}" aria-label="${t('done.btn')}">${icon('check')}</button><a href="#/trainee/${tr.id}">${esc(tr.name)}</a></span>${tr.note ? `<span class="prev warn-note">${esc(tr.note)}</span>` : ''}<span class="prev">${prev ? t('last') + ': ' + esc(entryLabel(prev)) + (extraText(prev) ? ' · ' + esc(extraText(prev)) : '') : t('first')}</span></div>
+  return `<div class="trow ${e.note ? 'show-note' : ''} ${wOn ? 'show-w' : ''} ${e.done ? 'done' : ''}"><div class="tn"><span class="tn-l">${future ? '' : `<button class="donebtn ${e.done ? 'on' : ''}" data-a="togDone" ${d} title="${t('done.btn')}" aria-label="${t('done.btn')}">${icon('check')}</button>`}<a href="#/trainee/${tr.id}">${esc(tr.name)}</a></span>${tr.note ? `<span class="prev warn-note">${esc(tr.note)}</span>` : ''}<span class="prev">${prev ? t('last') + ': ' + esc(entryLabel(prev)) + (extraText(prev) ? ' · ' + esc(extraText(prev)) : '') : t('first')}</span></div>
     <div class="tctl"><button class="stage ${set ? '' : 'unset'} ${changed ? 'changed' : ''}" data-a="stage" ${d}><span>${set ? esc(entryLabel(e)) : t('stage.unset')}</span><span class="badges">${set ? streakChips(sk) : ''}</span></button>${canUp ? `<button class="mini" data-a="nextStep" ${d} aria-label="${t('stage.next')}" title="${t('stage.next')}">${icon('up')}</button>` : ''}</div>
     <div class="tmeta"><span class="rr">${rounds}×</span><input type="number" inputmode="numeric" min="0" max="999" class="reps" value="${esc(e.reps || '')}" placeholder="${t('reps.ph')}" data-c="reps" ${d}>
       <button class="kgbtn ${wOn ? 'on' : ''}" data-a="togW" ${d} title="${t('weighted')}">+kg</button>
@@ -140,6 +145,16 @@ C.blockRounds = (v, d) => {
   b.rounds = num(v, 3, 1, 20);
   syncEntries(c.s); save(); render();
 };
+A.addAlt = d => openPicker({
+  title: t('alt.add'), allowText: true, allowNew: false, names: intervalNames, have: () => new Set(),
+  add: (ids, texts) => {
+    const c = getCtx(d.ctx), it = findBlock(c, d.b).items.find(i => i.id === d.it);
+    const known = [itemName(it), ...(it.alts || [])].map(norm);
+    it.alts = [...(it.alts || []), ...texts.filter(x => !known.includes(norm(x)))];
+    c.after();
+  },
+});
+A.delAlt = d => { const c = getCtx(d.ctx), it = findBlock(c, d.b).items.find(i => i.id === d.it); it.alts.splice(+d.n, 1); c.after(); };
 A.moveItem = d => { const b = findBlock(getCtx(d.ctx), d.b); move(b.items, b.items.findIndex(i => i.id === d.it), +d.dir); getCtx(d.ctx).after(); };
 A.delItem = d => { const c = getCtx(d.ctx), b = findBlock(c, d.b); b.items.splice(b.items.findIndex(i => i.id === d.it), 1); c.after(); };
 
@@ -185,7 +200,7 @@ A.addItem = d => {
 // Names used in earlier interval blocks, most used first (interval exercises are not tracked, so they stay free text).
 function intervalNames() {
   const cnt = new Map();
-  for (const s of db.sessions) for (const b of s.blocks) if (b.type === 'interval') for (const it of b.items) { const n = itemName(it); cnt.set(n, (cnt.get(n) || 0) + 1); }
+  for (const s of db.sessions) for (const b of s.blocks) if (b.type === 'interval') for (const it of b.items) for (const n of [itemName(it), ...(it.alts || [])]) cnt.set(n, (cnt.get(n) || 0) + 1);
   return [...cnt.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], locale())).map(x => x[0]);
 }
 function pickResults(q) {
@@ -303,14 +318,17 @@ A.stage = d => {
     <div class="row between"><button type="button" class="btn ghost-danger" data-a="stageClear" data-s="${s.id}" data-t="${tr.id}" data-k="${esc(d.k)}">${t('stage.clear')}</button><span class="row"><button type="button" class="btn" data-a="closeSheet">${t('cancel')}</button><button class="btn primary">${t('save')}</button></span></div></form>`);
 };
 const applyStep = (e, st) => { delete e.text; e.progId = st.id; e.label = st.label; };
+// Editing a row by hand marks it performed, except in planned (future) sessions.
+const canDone = e => { const s = getSession(e.sessionId); return !!s && s.date <= todayStr(); };
+const touch = e => { if (canDone(e)) e.done = true; };
 A.stageSet = d => {
   const e = getEntry(d.s, d.t, d.k), st = ladder(d.k).find(x => x.id === d.id);
-  applyStep(e, st); e.done = true; save(); closeSheet(); render();
+  applyStep(e, st); touch(e); save(); closeSheet(); render();
 };
 F.stageText = (fd, d) => {
   const e = getEntry(d.s, d.t, d.k), text = String(fd.get('text') || '').trim();
   if (!text) { closeSheet(); return; }
-  delete e.progId; delete e.label; e.text = text; e.done = true; save(); closeSheet(); render();
+  delete e.progId; delete e.label; e.text = text; touch(e); save(); closeSheet(); render();
 };
 A.stageClear = d => {
   const e = getEntry(d.s, d.t, d.k);
@@ -320,13 +338,15 @@ A.nextStep = d => {
   const e = getEntry(d.s, d.t, d.k), lad = ladder(d.k);
   const i = e.progId ? lad.findIndex(x => x.id === e.progId) : -1;
   if (i + 1 >= lad.length) return;
-  applyStep(e, lad[i + 1]); e.done = true; save(); render();
+  applyStep(e, lad[i + 1]); touch(e); save(); render();
 };
 // A row counts as done once its reps/weight/stage were set by hand (or ticked), not just prefilled from last time.
 function setRowDone(row, e, on) {
+  if (on && !canDone(e)) return;
   e.done = on;
   row.classList.toggle('done', on);
-  row.querySelector('.donebtn').classList.toggle('on', on);
+  const btn = row.querySelector('.donebtn');
+  if (btn) btn.classList.toggle('on', on);
   refreshDone();
 }
 function refreshDone() {

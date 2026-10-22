@@ -108,7 +108,7 @@ function soloOverview(g) {
 
 function membersTab(g) {
   const ms = activeMembers(g);
-  const rows = ms.map(x => `<button class="list-row" data-a="editTrainee" data-id="${x.id}" data-g="${g.id}"><span class="grow"><b>${esc(x.name)}</b>${x.note ? `<div class="muted warn-note">${esc(x.note)}</div>` : ''}</span>${icon('edit')}</button>`).join('');
+  const rows = ms.map(x => `<div class="list-row"><a class="grow" href="#/trainee/${x.id}"><b>${esc(x.name)}</b>${x.note ? `<div class="muted warn-note">${esc(x.note)}</div>` : ''}</a><button class="icon-btn" data-a="editTrainee" data-id="${x.id}" data-g="${g.id}" aria-label="${t('edit')}">${icon('edit')}</button></div>`).join('');
   const hasOthers = db.trainees.some(x => !g.traineeIds.includes(x.id));
   return `<div class="rows">${rows || `<p class="muted">${t('matrix.nomembers')}</p>`}</div>
     <button class="btn primary full" data-a="editTrainee" data-g="${g.id}">${icon('plus')} ${t('member.new')}</button>
