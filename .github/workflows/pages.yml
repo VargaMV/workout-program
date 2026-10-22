@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [claude/calisthenics-progression-tracker-n1lb0v, main]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

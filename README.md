@@ -14,7 +14,8 @@ Data lives in the browser that opened the app. Use *Settings → Export* for bac
 1. Pages on a private repository needs a paid GitHub plan; on a free plan make the repository public
    (*Settings → General → Danger Zone → Change visibility*). Only code is in the repository, never your data.
 2. *Settings → Pages → Build and deployment → Source:* **GitHub Actions**.
-3. Re-run the "Deploy to GitHub Pages" workflow (*Actions* tab) or push a commit. Every push then redeploys automatically.
+3. Publishing happens from the **`main`** branch: every push to `main` redeploys (or run the workflow by hand from the *Actions* tab).
+   Development happens on other branches and is merged into `main` when ready.
 
 ## Develop
 Sources are in `src/` (plain HTML/CSS/JS, no dependencies). `node build.js` regenerates `dist/` (the inlined
